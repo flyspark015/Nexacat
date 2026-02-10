@@ -1,22 +1,26 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { MessageCircle, Check } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { useCart } from "../lib/cartStore";
+import { useAuthStore } from "../lib/authStore";
+import { createOrder } from "../lib/firestoreService";
+import { generateOrderCode, generateWhatsAppOrderMessage, getWhatsAppLink } from "../lib/utils";
 import { toast } from "sonner";
 
 export function CheckoutPage() {
+  const navigate = useNavigate();
   const { items, getTotalPrice, clearCart } = useCart();
+  const { user, isAuthenticated } = useAuthStore();
   const totalPrice = getTotalPrice();
+  const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
-    fullName: "",
+    fullName: user?.name || "",
     phone: "",
-    email: "",
-    company: "",
     city: "",
     address: "",
     gstNumber: "",
@@ -32,66 +36,75 @@ export function CheckoutPage() {
     });
   };
 
-  const handleWhatsAppOrder = () => {
+  const handleWhatsAppOrder = async () => {
     if (!formData.fullName || !formData.phone || !formData.address || !formData.city) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    // Build WhatsApp message
-    let message = `*NEW ORDER REQUEST*\n\n`;
-    message += `*Customer Details:*\n`;
-    message += `Name: ${formData.fullName}\n`;
-    message += `Phone: ${formData.phone}\n`;
-    if (formData.email) message += `Email: ${formData.email}\n`;
-    if (formData.company) message += `Company: ${formData.company}\n`;
-    message += `City: ${formData.city}\n`;
-    message += `Address: ${formData.address}\n`;
-    if (formData.gstNumber) message += `GST Number: ${formData.gstNumber}\n`;
-    
-    message += `\n*Order Items:*\n`;
-    items.forEach((item, index) => {
-      message += `\n${index + 1}. ${item.product.name}\n`;
-      message += `   Qty: ${item.quantity}\n`;
-      if (item.product.price) {
-        message += `   Price: $${item.product.price} each\n`;
-        message += `   Subtotal: $${(item.product.price * item.quantity).toLocaleString()}\n`;
-      } else {
-        message += `   Price: Quote Required\n`;
-      }
-    });
-    
-    if (totalPrice > 0) {
-      message += `\n*Total Amount: $${totalPrice.toLocaleString()}*\n`;
-    } else {
-      message += `\n*Total: Quote Required*\n`;
-    }
-    
-    if (formData.notes) {
-      message += `\n*Additional Notes:*\n${formData.notes}`;
+    if (!isAuthenticated() || !user) {
+      toast.error("Please login to place an order");
+      navigate("/login");
+      return;
     }
 
-    // Open WhatsApp
-    window.open(
-      `https://wa.me/1234567890?text=${encodeURIComponent(message)}`,
-      "_blank"
-    );
+    setSubmitting(true);
 
-    // Clear cart and show success
-    clearCart();
-    toast.success("Order sent via WhatsApp!");
-    
-    // Reset form
-    setFormData({
-      fullName: "",
-      phone: "",
-      email: "",
-      company: "",
-      city: "",
-      address: "",
-      gstNumber: "",
-      notes: "",
-    });
+    try {
+      // Generate order code
+      const orderCode = generateOrderCode();
+
+      // Prepare order items
+      const orderItems = items.map((item) => ({
+        productId: item.product.id,
+        productName: item.product.name,
+        price: item.product.price || 0,
+        quantity: item.quantity,
+        sku: item.product.sku,
+      }));
+
+      // Create order in Firestore
+      const orderId = await createOrder({
+        orderCode,
+        customerUid: user.uid,
+        customerName: formData.fullName,
+        phone: formData.phone,
+        city: formData.city,
+        address: formData.address,
+        gstin: formData.gstNumber || undefined,
+        note: formData.notes || undefined,
+        items: orderItems,
+        status: "NEW",
+      });
+
+      // Generate WhatsApp message
+      const whatsappMessage = generateWhatsAppOrderMessage({
+        orderCode,
+        customerName: formData.fullName,
+        items: orderItems,
+        phone: formData.phone,
+        city: formData.city,
+        address: formData.address,
+        gstin: formData.gstNumber,
+        note: formData.notes,
+      });
+
+      // Open WhatsApp (use your business WhatsApp number)
+      const whatsappLink = getWhatsAppLink("1234567890", whatsappMessage);
+      window.open(whatsappLink, "_blank");
+
+      // Clear cart and show success
+      clearCart();
+      toast.success(`Order #${orderCode} created successfully!`);
+
+      // Navigate to profile/orders
+      navigate("/profile");
+    } catch (error: any) {
+      console.error("Order creation failed:", error);
+      toast.error("Failed to create order. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (items.length === 0) {
@@ -147,44 +160,19 @@ export function CheckoutPage() {
                   />
                 </div>
 
-                {/* Phone & Email */}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <Label htmlFor="phone">
-                      Phone Number <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      placeholder="+1 234 567 8900"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email (Optional)</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="john@company.com"
-                      value={formData.email}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
-
-                {/* Company */}
+                {/* Phone */}
                 <div>
-                  <Label htmlFor="company">Company Name (Optional)</Label>
+                  <Label htmlFor="phone">
+                    Phone Number <span className="text-destructive">*</span>
+                  </Label>
                   <Input
-                    id="company"
-                    name="company"
-                    placeholder="Your Company Ltd."
-                    value={formData.company}
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder="+91 98765 43210"
+                    value={formData.phone}
                     onChange={handleChange}
+                    required
                   />
                 </div>
 
@@ -196,7 +184,7 @@ export function CheckoutPage() {
                   <Input
                     id="city"
                     name="city"
-                    placeholder="New York"
+                    placeholder="Mumbai"
                     value={formData.city}
                     onChange={handleChange}
                     required
@@ -221,11 +209,11 @@ export function CheckoutPage() {
 
                 {/* GST Number */}
                 <div>
-                  <Label htmlFor="gstNumber">GST Number (Optional)</Label>
+                  <Label htmlFor="gstNumber">GSTIN (Optional)</Label>
                   <Input
                     id="gstNumber"
                     name="gstNumber"
-                    placeholder="XX XXXXX XXXXX XXX"
+                    placeholder="22AAAAA0000A1Z5"
                     value={formData.gstNumber}
                     onChange={handleChange}
                   />
@@ -263,7 +251,7 @@ export function CheckoutPage() {
                       </div>
                       {item.product.price ? (
                         <p className="font-medium">
-                          ${(item.product.price * item.quantity).toLocaleString()}
+                          ₹{(item.product.price * item.quantity).toLocaleString()}
                         </p>
                       ) : (
                         <p className="text-xs font-medium text-blue-accent">Quote</p>
@@ -277,7 +265,7 @@ export function CheckoutPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
                     {totalPrice > 0 ? (
-                      <span className="font-medium">${totalPrice.toLocaleString()}</span>
+                      <span className="font-medium">₹{totalPrice.toLocaleString()}</span>
                     ) : (
                       <span className="text-sm font-medium text-blue-accent">Quote</span>
                     )}
@@ -291,7 +279,7 @@ export function CheckoutPage() {
                 <div className="mt-4 flex justify-between">
                   <span className="font-semibold">Total</span>
                   {totalPrice > 0 ? (
-                    <span className="text-xl font-bold">${totalPrice.toLocaleString()}</span>
+                    <span className="text-xl font-bold">₹{totalPrice.toLocaleString()}</span>
                   ) : (
                     <span className="font-semibold text-blue-accent">Quote Required</span>
                   )}
@@ -303,9 +291,10 @@ export function CheckoutPage() {
                 size="lg"
                 className="w-full gap-2 bg-success hover:bg-success/90 text-success-foreground"
                 onClick={handleWhatsAppOrder}
+                disabled={submitting}
               >
                 <MessageCircle className="h-5 w-5" />
-                Send Order on WhatsApp
+                {submitting ? "Creating Order..." : "Send Order on WhatsApp"}
               </Button>
 
               <div className="rounded-xl border bg-muted/50 p-4">
