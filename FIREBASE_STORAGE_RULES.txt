@@ -1,0 +1,82 @@
+// ============================================================================
+// FIREBASE STORAGE SECURITY RULES FOR FLYSPARK B2B CATALOG
+// ============================================================================
+// 
+// DEPLOYMENT INSTRUCTIONS:
+// 
+// 1. Open Firebase Console (https://console.firebase.google.com/)
+// 2. Select your project: flyspark-cb85e
+// 3. Go to "Storage" in the left sidebar
+// 4. Click "Rules" tab at the top
+// 5. Copy and paste these rules
+// 6. Click "Publish" button
+// 
+// ============================================================================
+
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // ========================================================================
+    // HELPER FUNCTIONS
+    // ========================================================================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Validate file size (max 5MB)
+    function isValidSize() {
+      return request.resource.size <= 5 * 1024 * 1024;
+    }
+    
+    // Validate file is an image
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // ========================================================================
+    // PRODUCT IMAGES
+    // Path: products/{productId}/{fileName}
+    // ========================================================================
+    
+    match /products/{productId}/{fileName} {
+      // Anyone can read product images (public access)
+      allow read: if true;
+      
+      // Only admins can create/update/delete product images
+      allow create, update: if isAdmin() && isImage() && isValidSize();
+      allow delete: if isAdmin();
+    }
+    
+    // ========================================================================
+    // SETTINGS (LOGO, FAVICON)
+    // Path: settings/{fileName}
+    // ========================================================================
+    
+    match /settings/{fileName} {
+      // Anyone can read settings images (public access)
+      allow read: if true;
+      
+      // Only admins can upload/update/delete settings images
+      allow create, update: if isAdmin() && isImage() && isValidSize();
+      allow delete: if isAdmin();
+    }
+    
+    // ========================================================================
+    // DEFAULT RULE - DENY ALL OTHER ACCESS
+    // ========================================================================
+    
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
