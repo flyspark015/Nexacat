@@ -68,10 +68,29 @@ if (typeof window !== 'undefined' && import.meta.env.PROD) {
         console.warn('⚠️ Firebase Analytics initialization failed:', error);
       }
     }
-  }).catch(() => {
-    // Silently ignore if isSupported check fails
+  }).catch((error) => {
+    // Silently ignore if isSupported check fails - common in sandboxed environments
+    console.warn('⚠️ Analytics not supported in this environment');
   });
 }
+
+// Suppress Firebase Installations errors in console (non-critical service)
+// These errors are common in sandboxed environments and don't affect functionality
+if (typeof window !== 'undefined') {
+  const originalError = console.error;
+  console.error = (...args: any[]) => {
+    // Filter out Firebase Installations offline errors
+    const errorString = args.join(' ');
+    if (errorString.includes('installations/app-offline') || 
+        errorString.includes('Installations:')) {
+      // Log as warning instead
+      console.warn('⚠️ Firebase Installations service unavailable (non-critical)');
+      return;
+    }
+    originalError.apply(console, args);
+  };
+}
+
 export const analytics = analyticsInstance;
 
 export default app;

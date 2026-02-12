@@ -100,6 +100,25 @@ export const useCart = create<CartStore>()(
     }),
     {
       name: "flyspark-cart-storage",
+      storage: {
+        getItem: (name) => {
+          const str = localStorage.getItem(name);
+          if (!str) return null;
+          try {
+            return JSON.parse(str);
+          } catch (e) {
+            console.warn('Failed to parse cart data from localStorage, resetting cart');
+            localStorage.removeItem(name);
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          localStorage.setItem(name, JSON.stringify(value));
+        },
+        removeItem: (name) => {
+          localStorage.removeItem(name);
+        },
+      },
     }
   )
 );

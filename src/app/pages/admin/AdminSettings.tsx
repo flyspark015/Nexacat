@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getSettings, updateSettings } from "../../lib/firestoreService";
+import { uploadLogo, uploadFavicon, uploadPaymentQR } from "../../lib/storageService";
 import { SystemSettings } from "../../lib/types";
 import { Settings, Save, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -14,6 +15,15 @@ export function AdminSettings() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState<{
+    logo: boolean;
+    favicon: boolean;
+    qr: boolean;
+  }>({
+    logo: false,
+    favicon: false,
+    qr: false,
+  });
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [permissionError, setPermissionError] = useState(false);
 
@@ -223,10 +233,33 @@ export function AdminSettings() {
                   />
                   <button
                     type="button"
-                    className="px-4 py-2 bg-surface border border-border rounded-lg text-foreground hover:bg-muted transition-colors flex items-center gap-2"
+                    className="px-4 py-2 bg-surface border border-border rounded-lg text-foreground hover:bg-muted transition-colors flex items-center gap-2 disabled:opacity-50"
                     title="Upload to image hosting service and paste URL"
+                    disabled={uploading.logo}
+                    onClick={() => {
+                      const fileInput = document.createElement("input");
+                      fileInput.type = "file";
+                      fileInput.accept = "image/*";
+                      fileInput.onchange = async (event) => {
+                        const target = event.target as HTMLInputElement;
+                        if (target.files && target.files.length > 0) {
+                          setUploading((prev) => ({ ...prev, logo: true }));
+                          try {
+                            const url = await uploadLogo(target.files[0]);
+                            handleInputChange("logoUrl", url);
+                            toast.success("Logo uploaded successfully!");
+                          } catch (error: any) {
+                            console.error("Error uploading logo:", error);
+                            toast.error(error.message || "Failed to upload logo");
+                          } finally {
+                            setUploading((prev) => ({ ...prev, logo: false }));
+                          }
+                        }
+                      };
+                      fileInput.click();
+                    }}
                   >
-                    <Upload className="w-4 h-4" />
+                    {uploading.logo ? "Uploading..." : <Upload className="w-4 h-4" />}
                   </button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -256,13 +289,45 @@ export function AdminSettings() {
                     (Optional - .ico or .png)
                   </span>
                 </label>
-                <input
-                  type="url"
-                  value={settings.faviconUrl || ""}
-                  onChange={(e) => handleInputChange("faviconUrl", e.target.value)}
-                  placeholder="https://example.com/favicon.ico"
-                  className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={settings.faviconUrl || ""}
+                    onChange={(e) => handleInputChange("faviconUrl", e.target.value)}
+                    placeholder="https://example.com/favicon.ico"
+                    className="flex-1 px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
+                  />
+                  <button
+                    type="button"
+                    className="px-4 py-2 bg-surface border border-border rounded-lg text-foreground hover:bg-muted transition-colors flex items-center gap-2 disabled:opacity-50"
+                    title="Upload to image hosting service and paste URL"
+                    disabled={uploading.favicon}
+                    onClick={() => {
+                      const fileInput = document.createElement("input");
+                      fileInput.type = "file";
+                      fileInput.accept = "image/*";
+                      fileInput.onchange = async (event) => {
+                        const target = event.target as HTMLInputElement;
+                        if (target.files && target.files.length > 0) {
+                          setUploading((prev) => ({ ...prev, favicon: true }));
+                          try {
+                            const url = await uploadFavicon(target.files[0]);
+                            handleInputChange("faviconUrl", url);
+                            toast.success("Favicon uploaded successfully!");
+                          } catch (error: any) {
+                            console.error("Error uploading favicon:", error);
+                            toast.error(error.message || "Failed to upload favicon");
+                          } finally {
+                            setUploading((prev) => ({ ...prev, favicon: false }));
+                          }
+                        }
+                      };
+                      fileInput.click();
+                    }}
+                  >
+                    {uploading.favicon ? "Uploading..." : <Upload className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -462,13 +527,45 @@ export function AdminSettings() {
                   Payment QR Code URL
                   <span className="text-muted-foreground text-xs ml-2">(Direct image URL)</span>
                 </label>
-                <input
-                  type="url"
-                  value={settings.paymentQrCodeUrl || ""}
-                  onChange={(e) => handleInputChange("paymentQrCodeUrl", e.target.value)}
-                  placeholder="https://example.com/qr-code.png"
-                  className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={settings.paymentQrCodeUrl || ""}
+                    onChange={(e) => handleInputChange("paymentQrCodeUrl", e.target.value)}
+                    placeholder="https://example.com/qr-code.png"
+                    className="flex-1 px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
+                  />
+                  <button
+                    type="button"
+                    className="px-4 py-2 bg-surface border border-border rounded-lg text-foreground hover:bg-muted transition-colors flex items-center gap-2 disabled:opacity-50"
+                    title="Upload to image hosting service and paste URL"
+                    disabled={uploading.qr}
+                    onClick={() => {
+                      const fileInput = document.createElement("input");
+                      fileInput.type = "file";
+                      fileInput.accept = "image/*";
+                      fileInput.onchange = async (event) => {
+                        const target = event.target as HTMLInputElement;
+                        if (target.files && target.files.length > 0) {
+                          setUploading((prev) => ({ ...prev, qr: true }));
+                          try {
+                            const url = await uploadPaymentQR(target.files[0]);
+                            handleInputChange("paymentQrCodeUrl", url);
+                            toast.success("QR code uploaded successfully!");
+                          } catch (error: any) {
+                            console.error("Error uploading QR code:", error);
+                            toast.error(error.message || "Failed to upload QR code");
+                          } finally {
+                            setUploading((prev) => ({ ...prev, qr: false }));
+                          }
+                        }
+                      };
+                      fileInput.click();
+                    }}
+                  >
+                    {uploading.qr ? "Uploading..." : <Upload className="w-4 h-4" />}
+                  </button>
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Upload QR code to image hosting service and paste URL (leave empty to use default)
                 </p>
