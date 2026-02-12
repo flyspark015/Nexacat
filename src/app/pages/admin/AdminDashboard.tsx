@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { useState, useEffect } from "react";
 import {
   Package,
   ShoppingCart,
@@ -9,14 +10,46 @@ import {
   Plus,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
-import { products, categories } from "../../lib/mockData";
+import { getProducts, getCategories } from "../../lib/firestoreService";
+import { Product, Category } from "../../lib/types";
+import { LoadingSpinner } from "../../components/LoadingSpinner";
+import { formatPrice, getStockStatusBadge } from "../../lib/utils";
 
 export function AdminDashboard() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [prods, cats] = await Promise.all([getProducts(), getCategories()]);
+      setProducts(prods);
+      setCategories(cats);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
   const totalProducts = products.length;
-  const inStockProducts = products.filter((p) => p.inStock).length;
+  const inStockProducts = products.filter((p) => p.stockStatus === "in-stock").length;
   const totalCategories = categories.length;
   
-  // Mock stats
+  // Stats
   const stats = [
     {
       label: "Total Products",
@@ -180,41 +213,47 @@ export function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {products.slice(0, 5).map((product) => (
-                    <tr key={product.id} className="border-b last:border-0">
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="h-12 w-12 rounded-lg object-cover"
-                          />
-                          <div>
-                            <p className="font-medium">{product.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {product.shortDescription.slice(0, 40)}...
-                            </p>
+                  {products.slice(0, 5).map((product) => {
+                    const primaryImage = product.images?.[0] || "/placeholder-product.png";
+                    const shortDesc = product.shortDescription?.[0] || product.description;
+                    const isInStock = product.stockStatus === "in-stock";
+                    
+                    return (
+                      <tr key={product.id} className="border-b last:border-0">
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={primaryImage}
+                              alt={product.name}
+                              className="h-12 w-12 rounded-lg object-cover"
+                            />
+                            <div>
+                              <p className="font-medium">{product.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {shortDesc.slice(0, 40)}...
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="p-4 text-sm">{product.categoryName}</td>
-                      <td className="p-4 text-sm">{product.brand}</td>
-                      <td className="p-4 text-sm font-medium">
-                        {product.price ? `$${product.price}` : "Quote"}
-                      </td>
-                      <td className="p-4">
-                        {product.inStock ? (
-                          <span className="inline-flex items-center rounded-full bg-success/10 px-2 py-1 text-xs font-medium text-success">
-                            In Stock
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive">
-                            Out of Stock
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="p-4 text-sm">{product.categoryId}</td>
+                        <td className="p-4 text-sm">{product.brand || "N/A"}</td>
+                        <td className="p-4 text-sm font-medium">
+                          {product.price ? formatPrice(product.price) : "Quote"}
+                        </td>
+                        <td className="p-4">
+                          {isInStock ? (
+                            <span className="inline-flex items-center rounded-full bg-success/10 px-2 py-1 text-xs font-medium text-success">
+                              In Stock
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive">
+                              Out of Stock
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

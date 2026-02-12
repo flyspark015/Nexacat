@@ -7,25 +7,29 @@ import { useCart } from "../../lib/cartStore";
 import { useAuthStore } from "../../lib/authStore";
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
-import { categories } from "../../lib/mockData";
-import { getSettings } from "../../lib/firestoreService";
-import { SystemSettings } from "../../lib/types";
+import { getCategories, getSettings } from "../../lib/firestoreService";
+import { SystemSettings, Category } from "../../lib/types";
 
 export function Header() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const totalItems = useCart((state) => state.getTotalItems());
   const { user, isAuthenticated, isAdmin } = useAuthStore();
 
   useEffect(() => {
-    loadSettings();
+    loadData();
   }, []);
 
-  const loadSettings = async () => {
+  const loadData = async () => {
     try {
-      const data = await getSettings();
-      setSettings(data);
+      const [settingsData, categoriesData] = await Promise.all([
+        getSettings(),
+        getCategories(),
+      ]);
+      setSettings(settingsData);
+      setCategories(categoriesData);
     } catch (error: any) {
       // Silently use default settings if permission denied
       // This allows the app to work even without Firestore rules deployed

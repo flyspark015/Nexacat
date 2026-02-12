@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SlidersHorizontal, ChevronRight } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { ProductCard } from "../components/ProductCard";
@@ -7,26 +7,54 @@ import { Checkbox } from "../components/ui/checkbox";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "../components/ui/sheet";
-import { getCategoryById, getProductsByCategory, products } from "../lib/mockData";
+import { getCategory, getProductsByCategory, getAllProducts } from "../lib/firestoreService";
+import { Category, Product } from "../lib/types";
+import { LoadingSpinner } from "../components/LoadingSpinner";
 
 export function CategoryPage() {
   const { categoryId } = useParams();
-  const category = getCategoryById(categoryId || "");
-  const categoryProducts = categoryId ? getProductsByCategory(categoryId) : products;
-
+  const [category, setCategory] = useState<Category | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [inStockOnly, setInStockOnly] = useState(false);
   const [sortBy, setSortBy] = useState("featured");
 
+  useEffect(() => {
+    loadData();
+  }, [categoryId]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      if (categoryId) {
+        const [cat, prods] = await Promise.all([
+          getCategory(categoryId),
+          getProductsByCategory(categoryId),
+        ]);
+        setCategory(cat);
+        setProducts(prods);
+      } else {
+        const prods = await getAllProducts();
+        setProducts(prods);
+        setCategory(null);
+      }
+    } catch (error) {
+      console.error("Error loading data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Get unique brands
-  const brands = Array.from(new Set(categoryProducts.map((p) => p.brand)));
+  const brands = Array.from(new Set(products.map((p) => p.brand).filter(Boolean)));
 
   // Filter products
-  let filteredProducts = categoryProducts.filter((product) => {
+  let filteredProducts = products.filter((product) => {
     if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand)) {
       return false;
     }
-    if (inStockOnly && !product.inStock) {
+    if (inStockOnly && product.stockStatus !== "in-stock") {
       return false;
     }
     return true;
@@ -47,6 +75,14 @@ export function CategoryPage() {
         return b.featured ? 1 : -1;
     }
   });
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
 
   const FilterContent = () => (
     <div className="space-y-6">

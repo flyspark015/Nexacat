@@ -4,7 +4,8 @@ import { Search as SearchIcon, X } from "lucide-react";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { ProductCard } from "../components/ProductCard";
-import { searchProducts } from "../lib/mockData";
+import { searchProducts } from "../lib/firestoreService";
+import { Product } from "../lib/types";
 
 export function SearchPage() {
   const [searchParams] = useSearchParams();
@@ -12,12 +13,31 @@ export function SearchPage() {
   const queryParam = searchParams.get("q") || "";
   
   const [query, setQuery] = useState(queryParam);
-  const [results, setResults] = useState(searchProducts(queryParam));
+  const [results, setResults] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setQuery(queryParam);
-    setResults(searchProducts(queryParam));
+    performSearch(queryParam);
   }, [queryParam]);
+
+  const performSearch = async (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      setResults([]);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const products = await searchProducts(searchTerm);
+      setResults(products);
+    } catch (error) {
+      console.error("Error searching products:", error);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

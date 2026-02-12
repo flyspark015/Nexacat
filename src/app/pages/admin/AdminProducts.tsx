@@ -1,11 +1,10 @@
 import { Link } from "react-router";
 import { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, Search, Package } from "lucide-react";
+import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
 import { getProducts, deleteProduct } from "../../lib/firestoreService";
-import { seedDemoProducts } from "../../lib/seedData";
 import { Product } from "../../lib/types";
 import { formatPrice, getStockStatusBadge } from "../../lib/utils";
 import { toast } from "sonner";
@@ -14,7 +13,6 @@ export function AdminProducts() {
   const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [seeding, setSeeding] = useState(false);
 
   useEffect(() => {
     loadProducts();
@@ -48,28 +46,6 @@ export function AdminProducts() {
     }
   };
 
-  const handleSeedDemoData = async () => {
-    if (
-      !confirm(
-        "This will create 5 demo products in the Ecat category. Continue?"
-      )
-    ) {
-      return;
-    }
-
-    try {
-      setSeeding(true);
-      await seedDemoProducts();
-      toast.success("Demo products created successfully!");
-      loadProducts(); // Reload list
-    } catch (error) {
-      console.error("Error seeding demo data:", error);
-      toast.error("Failed to create demo products");
-    } finally {
-      setSeeding(false);
-    }
-  };
-
   const filteredProducts = products.filter(
     (product) =>
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -93,23 +69,12 @@ export function AdminProducts() {
                 Manage your product catalog
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="gap-2"
-                onClick={handleSeedDemoData}
-                disabled={seeding}
-              >
-                <Package className="h-4 w-4" />
-                {seeding ? "Creating..." : "Seed Demo Data"}
-              </Button>
-              <Button asChild className="gap-2">
-                <Link to="/admin/products/add">
-                  <Plus className="h-4 w-4" />
-                  Add Product
-                </Link>
-              </Button>
-            </div>
+            <Button asChild className="gap-2">
+              <Link to="/admin/products/add">
+                <Plus className="h-4 w-4" />
+                Add Product
+              </Link>
+            </Button>
           </div>
 
           {/* Search */}
@@ -262,17 +227,12 @@ export function AdminProducts() {
                   <p className="mb-4 text-muted-foreground">
                     {searchQuery
                       ? "Try adjusting your search"
-                      : "Get started by creating your first product or seeding demo data"}
+                      : "Get started by creating your first product"}
                   </p>
                   {!searchQuery && (
-                    <div className="flex gap-2">
-                      <Button onClick={handleSeedDemoData} disabled={seeding}>
-                        Seed Demo Data
-                      </Button>
-                      <Button variant="outline" asChild>
-                        <Link to="/admin/products/add">Add Product</Link>
-                      </Button>
-                    </div>
+                    <Button variant="outline" asChild>
+                      <Link to="/admin/products/add">Add Product</Link>
+                    </Button>
                   )}
                 </div>
               )}

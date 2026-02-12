@@ -1,10 +1,40 @@
 import { Link } from "react-router";
+import { useState, useEffect } from "react";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import { categories } from "../../lib/mockData";
+import { getCategories } from "../../lib/firestoreService";
+import { Category } from "../../lib/types";
+import { LoadingSpinner } from "../../components/LoadingSpinner";
 
 export function AdminCategories() {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    try {
+      setLoading(true);
+      const cats = await getCategories();
+      setCategories(cats);
+    } catch (error) {
+      console.error("Error loading categories:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -35,7 +65,7 @@ export function AdminCategories() {
             >
               <div className="aspect-video overflow-hidden">
                 <img
-                  src={category.image}
+                  src={category.imageLocalPath || "/placeholder-category.png"}
                   alt={category.name}
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
@@ -44,13 +74,9 @@ export function AdminCategories() {
                 <div className="mb-3 flex items-start justify-between">
                   <div>
                     <h3 className="mb-1 text-xl font-semibold">{category.name}</h3>
-                    <p className="text-sm text-muted-foreground">{category.description}</p>
+                    <p className="text-sm text-muted-foreground">{category.slug}</p>
                   </div>
                 </div>
-                
-                <Badge variant="secondary" className="mb-4">
-                  {category.productCount} Products
-                </Badge>
 
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" className="flex-1 gap-2">
