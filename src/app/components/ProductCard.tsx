@@ -25,16 +25,37 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
   
   // Get primary image - handle both old and new structure
   const primaryImage = 
+    product.images?.[0] || 
     product.imagesLocalPaths?.[0] || 
     (product as any).image || 
     (product as any).images?.[0] || 
     "/placeholder-product.png";
   
-  // Get price - handle both simple and variable products
-  const displayPrice = product.productType === "simple" && product.price 
-    ? product.price 
-    : (product as any).price || 0;
+  // Calculate price for display
+  let displayPrice = 0;
+  let priceRange = "";
+  let isVariableProduct = false;
+  
+  if (product.productType === "variable" && product.variations && product.variations.length > 0) {
+    isVariableProduct = true;
+    const prices = product.variations
+      .filter(v => v.status !== "draft")
+      .map(v => v.price);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
     
+    if (minPrice === maxPrice) {
+      displayPrice = minPrice;
+    } else {
+      priceRange = `₹${minPrice.toLocaleString("en-IN")} – ₹${maxPrice.toLocaleString("en-IN")}`;
+    }
+  } else if (product.productType === "simple" && product.price) {
+    displayPrice = product.price;
+  } else {
+    // Fallback for old mock data
+    displayPrice = (product as any).price || 0;
+  }
+  
   // Get product type with default
   const productType = product.productType || "simple";
     
@@ -52,7 +73,7 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
     }
 
     // For variable products, redirect to product page to select variation
-    if (productType === "variable") {
+    if (isVariableProduct) {
       return; // Let the Link handle navigation
     }
 
@@ -64,7 +85,6 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
         productSlug: product.slug,
         productType: "simple",
         price: displayPrice,
-        quantity: 1,
         imageLocalPath: primaryImage,
       });
       toast.success(`${product.name} added to cart`);
@@ -73,6 +93,15 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-lg border border-border bg-surface transition-all hover:shadow-lg hover:shadow-blue-accent/10">
+      {/* Product Type Badge for Variable Products */}
+      {isVariableProduct && (
+        <div className="absolute left-3 top-3 z-10">
+          <Badge className="bg-orange-accent text-orange-accent-foreground">
+            Multiple Options
+          </Badge>
+        </div>
+      )}
+      
       {/* Quick Actions */}
       <div className="absolute right-2 top-2 z-10 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
         <Link to={`/product/${product.slug}`}>
@@ -84,14 +113,16 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
             <Eye className="h-4 w-4" />
           </Button>
         </Link>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={handleAddToCart}
-          className="h-8 w-8 rounded-full p-0 bg-background/90 backdrop-blur-sm hover:bg-background"
-        >
-          <ShoppingCart className="h-4 w-4" />
-        </Button>
+        {!isVariableProduct && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleAddToCart}
+            className="h-8 w-8 rounded-full p-0 bg-background/90 backdrop-blur-sm hover:bg-background"
+          >
+            <ShoppingCart className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Image */}
@@ -141,7 +172,13 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
 
         {/* Price & Actions */}
         <div className="mt-auto flex items-center justify-between gap-2 pt-4">
-          <div>{formatPrice(displayPrice)}</div>
+          <div className="font-semibold">
+            {priceRange ? (
+              <span className="text-sm">{priceRange}</span>
+            ) : (
+              formatPrice(displayPrice)
+            )}
+          </div>
 
           <div className="flex gap-2">
             <Button
@@ -149,8 +186,11 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
               variant="outline"
               className="h-9 w-9"
               onClick={(e) => e.preventDefault()}
+              asChild
             >
-              <Eye className="h-4 w-4" />
+              <Link to={`/product/${product.slug}`}>
+                <Eye className="h-4 w-4" />
+              </Link>
             </Button>
             {canAddToCart && (
               <Button
@@ -164,15 +204,6 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
           </div>
         </div>
       </div>
-
-      {/* Product Type Badge */}
-      {product.productType === "variable" && (
-        <div className="absolute right-3 top-3">
-          <Badge className="bg-orange-accent text-orange-accent-foreground">
-            Multiple Options
-          </Badge>
-        </div>
-      )}
     </div>
   );
 }

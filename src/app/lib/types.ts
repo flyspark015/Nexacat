@@ -20,6 +20,8 @@ export interface ProductVariation {
   variationName: string;
   price: number;
   sku?: string;
+  variationImageIndex?: number; // Index to product.images array
+  status?: "active" | "draft";
 }
 
 export interface Product {
@@ -35,12 +37,16 @@ export interface Product {
   productType: "simple" | "variable";
   price?: number; // Only for simple products
   isPriceVisible: boolean;
-  imagesLocalPaths: string[];
+  images: string[]; // Firebase Storage download URLs
+  mainImageIndex?: number;
   stockStatus: "in-stock" | "out-of-stock" | "preorder";
   videoUrl?: string; // YouTube video URL
   status: "active" | "draft";
   createdAt: Date;
   variations?: ProductVariation[]; // Only for variable products
+  
+  // Deprecated fields (for backward compatibility with old mock data)
+  imagesLocalPaths?: string[];
 }
 
 export interface OrderItem {
@@ -73,10 +79,23 @@ export interface SystemSettings {
   logoUrl?: string;
   faviconUrl?: string;
   companyName: string;
+  companyAddress?: string;
+  gstNumber?: string;
+  iecCode?: string;
   whatsappNumber: string;
   currency: string;
   supportEmail: string;
   footerAddress?: string;
+  websites?: string[];
+  
+  // Payment Details
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankIfscCode?: string;
+  bankUcic?: string;
+  bankName?: string;
+  upiId?: string;
+  paymentQrCodeUrl?: string;
 }
 
 // Cart types (local storage + Zustand)

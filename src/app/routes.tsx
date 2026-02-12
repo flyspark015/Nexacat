@@ -8,6 +8,7 @@ import { ProductDetailPage } from "./pages/ProductDetailPage";
 import { SearchPage } from "./pages/SearchPage";
 import { CartPage } from "./pages/CartPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
+import { PaymentDetailsPage } from "./pages/PaymentDetailsPage";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { RegisterPage } from "./pages/auth/RegisterPage";
 import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage";
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
       { path: "product/:productId", Component: ProductDetailPage },
       { path: "search", Component: SearchPage },
       { path: "cart", Component: CartPage },
+      { path: "payment-details", Component: PaymentDetailsPage },
       {
         path: "checkout",
         element: (

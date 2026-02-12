@@ -1,7 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getAnalytics } from "firebase/analytics";
+import { getAnalytics, Analytics, isSupported } from "firebase/analytics";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1NXJac5yAj0bPtiqO5XfwjjKAbCbGiUU",
@@ -19,8 +20,24 @@ const app = initializeApp(firebaseConfig);
 // Initialize services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 
-// Analytics (only in browser)
-export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
+// Analytics (only in browser and gracefully handle errors in sandboxed environments)
+let analyticsInstance: Analytics | null = null;
+// Don't initialize analytics in sandboxed/development environments
+if (typeof window !== 'undefined' && import.meta.env.PROD) {
+  isSupported().then(supported => {
+    if (supported) {
+      try {
+        analyticsInstance = getAnalytics(app);
+      } catch (error) {
+        console.warn('Firebase Analytics initialization failed:', error);
+      }
+    }
+  }).catch(() => {
+    // Silently ignore if isSupported check fails
+  });
+}
+export const analytics = analyticsInstance;
 
 export default app;

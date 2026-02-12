@@ -7,10 +7,10 @@ import { toast } from "sonner";
 export function AdminSettings() {
   const [settings, setSettings] = useState<SystemSettings>({
     id: "app-settings",
-    companyName: "FlySpark",
-    whatsappNumber: "+919876543210",
+    companyName: "ANUSHAKTI INFOTECH PVT. LTD.",
+    whatsappNumber: "+91-9461785001",
     currency: "INR",
-    supportEmail: "seminest015@gmail.com",
+    supportEmail: "contact@anushakti.com",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -317,6 +317,161 @@ export function AdminSettings() {
                   rows={3}
                   className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
                 />
+              </div>
+
+              {/* Company Address */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Company Address
+                  <span className="text-muted-foreground text-xs ml-2">(Full address)</span>
+                </label>
+                <textarea
+                  value={settings.companyAddress || ""}
+                  onChange={(e) => handleInputChange("companyAddress", e.target.value)}
+                  placeholder="E-317, Siddhraj Z-Square, Podar International School Road, Kudasan, Gandhinagar, Gujarat - 382421, India"
+                  rows={4}
+                  className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
+                />
+              </div>
+
+              {/* GST Number */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  GST Number
+                  <span className="text-muted-foreground text-xs ml-2">(GSTIN)</span>
+                </label>
+                <input
+                  type="text"
+                  value={settings.gstNumber || ""}
+                  onChange={(e) => handleInputChange("gstNumber", e.target.value)}
+                  placeholder="24ABCCA1331J1Z5"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
+                />
+              </div>
+
+              {/* IEC Code */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  IEC Code
+                  <span className="text-muted-foreground text-xs ml-2">(Import Export Code)</span>
+                </label>
+                <input
+                  type="text"
+                  value={settings.iecCode || ""}
+                  onChange={(e) => handleInputChange("iecCode", e.target.value)}
+                  placeholder="ABCCA1331J"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Details */}
+          <div className="bg-surface rounded-lg border border-border p-6">
+            <h2 className="text-xl font-semibold text-foreground mb-4">Payment Information</h2>
+            
+            <div className="space-y-4">
+              {/* Bank Account Name */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Bank Account Name
+                </label>
+                <input
+                  type="text"
+                  value={settings.bankAccountName || ""}
+                  onChange={(e) => handleInputChange("bankAccountName", e.target.value)}
+                  placeholder="ANUSHAKTI INFOTECH PVT. LTD."
+                  className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
+                />
+              </div>
+
+              {/* Bank Account Number */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Bank Account Number
+                </label>
+                <input
+                  type="text"
+                  value={settings.bankAccountNumber || ""}
+                  onChange={(e) => handleInputChange("bankAccountNumber", e.target.value)}
+                  placeholder="63773716130"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
+                />
+              </div>
+
+              {/* Bank IFSC Code */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  IFSC Code
+                </label>
+                <input
+                  type="text"
+                  value={settings.bankIfscCode || ""}
+                  onChange={(e) => handleInputChange("bankIfscCode", e.target.value)}
+                  placeholder="IDFB0040303"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
+                />
+              </div>
+
+              {/* Bank UCIC */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  UCIC
+                  <span className="text-muted-foreground text-xs ml-2">(Universal Customer ID)</span>
+                </label>
+                <input
+                  type="text"
+                  value={settings.bankUcic || ""}
+                  onChange={(e) => handleInputChange("bankUcic", e.target.value)}
+                  placeholder="6583633571"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
+                />
+              </div>
+
+              {/* Bank Name */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Bank Name
+                </label>
+                <input
+                  type="text"
+                  value={settings.bankName || ""}
+                  onChange={(e) => handleInputChange("bankName", e.target.value)}
+                  placeholder="IDFC FIRST Bank"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
+                />
+              </div>
+
+              {/* UPI ID */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  UPI ID
+                </label>
+                <input
+                  type="text"
+                  value={settings.upiId || ""}
+                  onChange={(e) => handleInputChange("upiId", e.target.value)}
+                  placeholder="anushaktiinfotech@idfcbank"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
+                />
+              </div>
+
+              {/* Payment QR Code URL */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Payment QR Code URL
+                  <span className="text-muted-foreground text-xs ml-2">(Direct image URL)</span>
+                </label>
+                <input
+                  type="url"
+                  value={settings.paymentQrCodeUrl || ""}
+                  onChange={(e) => handleInputChange("paymentQrCodeUrl", e.target.value)}
+                  placeholder="https://example.com/qr-code.png"
+                  className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Upload QR code to image hosting service and paste URL (leave empty to use default)
+                </p>
               </div>
             </div>
           </div>

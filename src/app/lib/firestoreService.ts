@@ -415,10 +415,22 @@ export const getSettings = async (): Promise<SystemSettings | null> => {
   // Return default settings if not found
   return {
     id: SETTINGS_DOC_ID,
-    companyName: "FlySpark",
-    whatsappNumber: "+919876543210",
+    companyName: "ANUSHAKTI INFOTECH PVT. LTD.",
+    companyAddress: "E-317, Siddhraj Z-Square, Podar International School Road, Kudasan, Gandhinagar, Gujarat - 382421, India",
+    gstNumber: "24ABCCA1331J1Z5",
+    iecCode: "ABCCA1331J",
+    whatsappNumber: "+91-9461785001",
     currency: "INR",
-    supportEmail: "seminest015@gmail.com",
+    supportEmail: "contact@anushakti.com",
+    footerAddress: "E-317, Siddhraj Z-Square, Kudasan, Gandhinagar, Gujarat - 382421",
+    
+    // Payment Details
+    bankAccountName: "ANUSHAKTI INFOTECH PVT. LTD.",
+    bankAccountNumber: "63773716130",
+    bankIfscCode: "IDFB0040303",
+    bankUcic: "6583633571",
+    bankName: "IDFC FIRST Bank",
+    upiId: "anushaktiinfotech@idfcbank",
   };
 };
 
