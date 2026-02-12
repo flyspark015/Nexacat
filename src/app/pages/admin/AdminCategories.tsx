@@ -1,109 +1,52 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, X } from "lucide-react";
+import { Plus, Edit, Trash2, Search, FolderOpen } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import { getCategories, createCategory, updateCategory, deleteCategory } from "../../lib/firestoreService";
+import { getCategories, deleteCategory } from "../../lib/firestoreService";
 import { Category } from "../../lib/types";
 import { LoadingSpinner } from "../../components/LoadingSpinner";
 import { toast } from "sonner";
 
 export function AdminCategories() {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showDialog, setShowDialog] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    slug: "",
-    description: "",
-    imageLocalPath: "",
-  });
-  const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     loadCategories();
   }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredCategories(categories);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredCategories(
+        categories.filter(
+          (cat) =>
+            cat.name.toLowerCase().includes(query) ||
+            cat.slug.toLowerCase().includes(query) ||
+            cat.description?.toLowerCase().includes(query)
+        )
+      );
+    }
+  }, [searchQuery, categories]);
 
   const loadCategories = async () => {
     try {
       setLoading(true);
       const cats = await getCategories();
       setCategories(cats);
+      setFilteredCategories(cats);
     } catch (error) {
       console.error("Error loading categories:", error);
       toast.error("Failed to load categories");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleOpenDialog = (category?: Category) => {
-    if (category) {
-      setEditingCategory(category);
-      setFormData({
-        name: category.name,
-        slug: category.slug,
-        description: category.description || "",
-        imageLocalPath: category.imageLocalPath || "",
-      });
-    } else {
-      setEditingCategory(null);
-      setFormData({
-        name: "",
-        slug: "",
-        description: "",
-        imageLocalPath: "",
-      });
-    }
-    setShowDialog(true);
-  };
-
-  const handleCloseDialog = () => {
-    setShowDialog(false);
-    setEditingCategory(null);
-    setFormData({
-      name: "",
-      slug: "",
-      description: "",
-      imageLocalPath: "",
-    });
-  };
-
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-  };
-
-  const handleNameChange = (name: string) => {
-    setFormData({
-      ...formData,
-      name,
-      slug: generateSlug(name),
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-
-    try {
-      if (editingCategory) {
-        await updateCategory(editingCategory.id, formData);
-        toast.success("Category updated successfully!");
-      } else {
-        await createCategory(formData);
-        toast.success("Category created successfully!");
-      }
-      await loadCategories();
-      handleCloseDialog();
-    } catch (error) {
-      console.error("Error saving category:", error);
-      toast.error("Failed to save category");
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -113,12 +56,15 @@ export function AdminCategories() {
     }
 
     try {
+      setDeleting(id);
       await deleteCategory(id);
       toast.success("Category deleted successfully!");
       await loadCategories();
     } catch (error) {
       console.error("Error deleting category:", error);
       toast.error("Failed to delete category");
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -137,63 +83,151 @@ export function AdminCategories() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Categories</h1>
+              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+                Categories
+              </h1>
               <p className="mt-2 text-muted-foreground">
-                Manage product categories
+                Manage product categories for your store
               </p>
             </div>
-            <Button className="gap-2" onClick={() => handleOpenDialog()}>
+            <Button
+              className="gap-2"
+              onClick={() => navigate("/admin/categories/add")}
+            >
               <Plus className="h-4 w-4" />
               Add Category
             </Button>
+          </div>
+
+          {/* Search Bar */}
+          <div className="mt-6">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search categories..."
+                className="w-full rounded-lg border border-border bg-background py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-accent"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Categories Grid */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {categories.map((category) => (
-            <div
-              key={category.id}
-              className="group overflow-hidden rounded-xl border bg-card transition-all hover:shadow-lg"
-            >
-              <div className="aspect-video overflow-hidden">
-                <img
-                  src={category.imageLocalPath || "/placeholder-category.png"}
-                  alt={category.name}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
+        {/* Stats */}
+        <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded-lg border bg-card p-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-blue-accent/10 p-3">
+                <FolderOpen className="h-5 w-5 text-blue-accent" />
               </div>
-              <div className="p-6">
-                <div className="mb-3 flex items-start justify-between">
-                  <div>
-                    <h3 className="mb-1 text-xl font-semibold">{category.name}</h3>
-                    <p className="text-sm text-muted-foreground">{category.slug}</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="flex-1 gap-2" onClick={() => handleOpenDialog(category)}>
-                    <Edit className="h-4 w-4" />
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-destructive hover:bg-destructive/10"
-                    onClick={() => handleDelete(category.id, category.name)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Total Categories
+                </p>
+                <p className="text-2xl font-bold">{categories.length}</p>
               </div>
             </div>
-          ))}
+          </div>
         </div>
 
-        {/* Back Navigation */}
-        <div className="mt-8 flex gap-4">
+        {/* Categories Grid */}
+        {filteredCategories.length === 0 ? (
+          <div className="rounded-xl border bg-card p-12 text-center">
+            <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">
+              {searchQuery ? "No categories found" : "No categories yet"}
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {searchQuery
+                ? "Try adjusting your search query"
+                : "Get started by creating your first category"}
+            </p>
+            {!searchQuery && (
+              <Button
+                className="mt-4 gap-2"
+                onClick={() => navigate("/admin/categories/add")}
+              >
+                <Plus className="h-4 w-4" />
+                Add Your First Category
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredCategories.map((category) => (
+              <div
+                key={category.id}
+                className="group overflow-hidden rounded-xl border bg-card transition-all hover:shadow-lg"
+              >
+                {/* Category Image */}
+                <div className="aspect-video overflow-hidden bg-muted">
+                  {category.imageLocalPath ? (
+                    <img
+                      src={category.imageLocalPath}
+                      alt={category.name}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-accent/20 to-purple-500/20">
+                      <FolderOpen className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Category Info */}
+                <div className="p-4">
+                  <div className="mb-3">
+                    <h3 className="mb-1 text-lg font-semibold line-clamp-1">
+                      {category.name}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      /{category.slug}
+                    </p>
+                    {category.description && (
+                      <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+                        {category.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 gap-2"
+                      onClick={() =>
+                        navigate(`/admin/categories/edit/${category.id}`)
+                      }
+                    >
+                      <Edit className="h-4 w-4" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDelete(category.id, category.name)}
+                      disabled={deleting === category.id}
+                    >
+                      {deleting === category.id ? (
+                        <LoadingSpinner size="sm" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div className="mt-8 flex flex-wrap gap-4">
           <Button variant="outline" asChild>
             <Link to="/admin">← Back to Dashboard</Link>
           </Button>
@@ -202,98 +236,6 @@ export function AdminCategories() {
           </Button>
         </div>
       </div>
-
-      {/* Category Dialog */}
-      {showDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-surface border border-border rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-border">
-              <h2 className="text-2xl font-bold">
-                {editingCategory ? "Edit Category" : "Add Category"}
-              </h2>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={handleCloseDialog}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Name <span className="text-destructive">*</span>
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-accent"
-                  value={formData.name}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Slug <span className="text-destructive">*</span>
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-accent"
-                  value={formData.slug}
-                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                  required
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Auto-generated from name, or customize manually
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Description
-                </label>
-                <textarea
-                  className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-accent"
-                  rows={3}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Image URL
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-accent"
-                  value={formData.imageLocalPath}
-                  onChange={(e) => setFormData({ ...formData, imageLocalPath: e.target.value })}
-                  placeholder="https://example.com/category-image.jpg"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Direct URL to category image (optional)
-                </p>
-              </div>
-              <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCloseDialog}
-                  disabled={saving}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="gap-2"
-                  disabled={saving}
-                >
-                  {saving ? "Saving..." : (editingCategory ? "Update Category" : "Create Category")}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

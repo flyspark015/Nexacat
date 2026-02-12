@@ -4,6 +4,22 @@ import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getAnalytics, Analytics, isSupported } from "firebase/analytics";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
 
+// Suppress Firebase Installations errors before initialization
+// These errors are common in sandboxed environments and don't affect functionality
+if (typeof window !== 'undefined') {
+  const originalError = console.error;
+  console.error = (...args: any[]) => {
+    const errorString = String(args[0] || '');
+    // Filter out Firebase Installations offline errors
+    if (errorString.includes('installations/app-offline') || 
+        errorString.includes('Installations:') ||
+        errorString.includes('FirebaseError: Installations:')) {
+      return; // Silently ignore
+    }
+    originalError.apply(console, args);
+  };
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyA1NXJac5yAj0bPtiqO5XfwjjKAbCbGiUU",
   authDomain: "flyspark-cb85e.firebaseapp.com",
@@ -72,23 +88,6 @@ if (typeof window !== 'undefined' && import.meta.env.PROD) {
     // Silently ignore if isSupported check fails - common in sandboxed environments
     console.warn('⚠️ Analytics not supported in this environment');
   });
-}
-
-// Suppress Firebase Installations errors in console (non-critical service)
-// These errors are common in sandboxed environments and don't affect functionality
-if (typeof window !== 'undefined') {
-  const originalError = console.error;
-  console.error = (...args: any[]) => {
-    // Filter out Firebase Installations offline errors
-    const errorString = args.join(' ');
-    if (errorString.includes('installations/app-offline') || 
-        errorString.includes('Installations:')) {
-      // Log as warning instead
-      console.warn('⚠️ Firebase Installations service unavailable (non-critical)');
-      return;
-    }
-    originalError.apply(console, args);
-  };
 }
 
 export const analytics = analyticsInstance;

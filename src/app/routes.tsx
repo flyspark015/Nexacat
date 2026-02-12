@@ -17,6 +17,7 @@ import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { AdminProducts } from "./pages/admin/AdminProducts";
 import { AdminAddProduct } from "./pages/admin/AdminAddProduct";
 import { AdminCategories } from "./pages/admin/AdminCategories";
+import { AdminCategoryForm } from "./pages/admin/AdminCategoryForm";
 import { AdminOrders } from "./pages/admin/AdminOrders";
 import { AdminUsers } from "./pages/admin/AdminUsers";
 import { AdminSettings } from "./pages/admin/AdminSettings";
@@ -112,6 +113,26 @@ export const router = createBrowserRouter([
       <ProtectedRoute requireAdmin>
         <AdminLayout>
           <AdminCategories />
+        </AdminLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/admin/categories/add",
+    element: (
+      <ProtectedRoute requireAdmin>
+        <AdminLayout>
+          <AdminCategoryForm />
+        </AdminLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/admin/categories/edit/:categoryId",
+    element: (
+      <ProtectedRoute requireAdmin>
+        <AdminLayout>
+          <AdminCategoryForm />
         </AdminLayout>
       </ProtectedRoute>
     ),
