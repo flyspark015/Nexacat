@@ -3,7 +3,9 @@ import { Copy, Check, Building2, CreditCard, Smartphone } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { toast } from 'sonner';
-import paymentQrCode from 'figma:asset/63c5a730f9885cfcfaff56a259e004f594587214.png';
+
+// Placeholder QR code - Replace with actual QR code URL or upload to Firebase Storage
+const DEFAULT_QR_CODE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjU2IiBoZWlnaHQ9IjI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjU2IiBoZWlnaHQ9IjI1NiIgZmlsbD0iI2ZmZiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NiI+VVBJIFFSIENvZGU8L3RleHQ+PHRleHQgeD0iNTAlIiB5PSI2MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiPmFudXNoYWt0aW5m90dldGNoQGlkZmNiYW5rPC90ZXh0Pjwvc3ZnPg==';
 
 interface PaymentInfoProps {
   settings?: {
@@ -192,7 +194,7 @@ export function PaymentInfo({ settings }: PaymentInfoProps) {
             <p className="text-sm text-muted-foreground mb-3">Scan QR Code to Pay</p>
             <div className="inline-block bg-white p-4 rounded-lg">
               <img
-                src={settings?.paymentQrCodeUrl || paymentQrCode}
+                src={settings?.paymentQrCodeUrl || DEFAULT_QR_CODE}
                 alt="Payment QR Code"
                 className="w-64 h-64 object-contain"
               />
