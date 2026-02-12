@@ -73,6 +73,7 @@ export const getProducts = async (status?: "active" | "draft"): Promise<Product[
       return {
         id: docSnapshot.id,
         ...productData,
+        shortDescription: productData.shortDescription || [], // Backward compatibility
         createdAt: productData.createdAt?.toDate() || new Date(),
         variations: variations.length > 0 ? variations : undefined,
       } as Product;
@@ -102,6 +103,7 @@ export const getProduct = async (id: string): Promise<Product | null> => {
     return {
       id: docSnap.id,
       ...productData,
+      shortDescription: productData.shortDescription || [], // Backward compatibility
       createdAt: productData.createdAt?.toDate() || new Date(),
       variations: variations.length > 0 ? variations : undefined,
     } as Product;
@@ -132,6 +134,7 @@ export const getProductBySlug = async (slug: string): Promise<Product | null> =>
     return {
       id: docSnapshot.id,
       ...productData,
+      shortDescription: productData.shortDescription || [], // Backward compatibility
       createdAt: productData.createdAt?.toDate() || new Date(),
       variations: variations.length > 0 ? variations : undefined,
     } as Product;
@@ -188,6 +191,11 @@ export const searchProducts = async (searchTerm: string): Promise<Product[]> => 
       product.brand?.toLowerCase().includes(lowerSearch) ||
       product.tags.some((tag) => tag.toLowerCase().includes(lowerSearch))
   );
+};
+
+// Get all active products (alias for clarity)
+export const getAllProducts = async (): Promise<Product[]> => {
+  return getProducts("active");
 };
 
 export const createProduct = async (

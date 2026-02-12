@@ -58,6 +58,9 @@ export function AdminAddProduct() {
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState("");
   
+  const [shortDescription, setShortDescription] = useState<string[]>([]);
+  const [newShortDesc, setNewShortDesc] = useState("");
+  
   const [specs, setSpecs] = useState<Record<string, string>>({});
   const [newSpecKey, setNewSpecKey] = useState("");
   const [newSpecValue, setNewSpecValue] = useState("");
@@ -105,6 +108,7 @@ export function AdminAddProduct() {
           status: product.status,
         });
         setTags(product.tags);
+        setShortDescription(product.shortDescription);
         setSpecs(product.specs);
         setImages(product.images.map(url => ({ url })));
         
@@ -187,6 +191,18 @@ export function AdminAddProduct() {
 
   const handleRemoveTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  // Short Description
+  const handleAddShortDesc = () => {
+    if (newShortDesc.trim() && !shortDescription.includes(newShortDesc.trim())) {
+      setShortDescription([...shortDescription, newShortDesc.trim()]);
+      setNewShortDesc("");
+    }
+  };
+
+  const handleRemoveShortDesc = (shortDescToRemove: string) => {
+    setShortDescription(shortDescription.filter(shortDesc => shortDesc !== shortDescToRemove));
   };
 
   // Specs
@@ -322,6 +338,7 @@ export function AdminAddProduct() {
         brand: formData.brand || undefined,
         sku: formData.sku || undefined,
         tags,
+        shortDescription,
         description: formData.description,
         specs,
         productType: formData.productType,
@@ -896,6 +913,52 @@ export function AdminAddProduct() {
                       <button
                         type="button"
                         onClick={() => handleRemoveTag(tag)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Short Description */}
+          <div className="rounded-xl border bg-card p-6">
+            <h2 className="mb-6 text-xl font-semibold">Short Description</h2>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="newShortDesc">Add Short Description</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="newShortDesc"
+                    placeholder="e.g., Professional"
+                    value={newShortDesc}
+                    onChange={e => setNewShortDesc(e.target.value)}
+                    onKeyPress={e =>
+                      e.key === "Enter" && (e.preventDefault(), handleAddShortDesc())
+                    }
+                  />
+                  <Button type="button" onClick={handleAddShortDesc} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add
+                  </Button>
+                </div>
+              </div>
+
+              {shortDescription.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {shortDescription.map(shortDesc => (
+                    <span
+                      key={shortDesc}
+                      className="flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-sm"
+                    >
+                      {shortDesc}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveShortDesc(shortDesc)}
                         className="text-muted-foreground hover:text-foreground"
                       >
                         <X className="h-3 w-3" />

@@ -347,6 +347,19 @@ export function ProductDetailPage() {
               <h1 className="mb-4 text-3xl font-bold tracking-tight md:text-4xl">
                 {product.name}
               </h1>
+              
+              {/* Short Description */}
+              {product.shortDescription && product.shortDescription.length > 0 && (
+                <ul className="mb-4 space-y-2">
+                  {product.shortDescription.map((desc, index) => (
+                    <li key={index} className="flex items-start gap-2 text-muted-foreground">
+                      <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-accent" />
+                      <span>{desc}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              
               <p className="text-muted-foreground">{product.description}</p>
             </div>
 

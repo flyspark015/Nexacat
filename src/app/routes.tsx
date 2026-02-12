@@ -21,6 +21,7 @@ import { AdminOrders } from "./pages/admin/AdminOrders";
 import { AdminUsers } from "./pages/admin/AdminUsers";
 import { AdminSettings } from "./pages/admin/AdminSettings";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { AllProductsPage } from "./pages/AllProductsPage";
 
 export const router = createBrowserRouter([
   {
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
     Component: RootLayout,
     children: [
       { index: true, Component: HomePage },
+      { path: "products", Component: AllProductsPage },
       { path: "category/:categoryId", Component: CategoryPage },
       { path: "product/:productId", Component: ProductDetailPage },
       { path: "search", Component: SearchPage },

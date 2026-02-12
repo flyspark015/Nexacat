@@ -32,6 +32,7 @@ export interface Product {
   categoryId: string;
   brand?: string;
   tags: string[];
+  shortDescription: string[]; // Key feature lines
   description: string;
   specs: Record<string, string>;
   productType: "simple" | "variable";

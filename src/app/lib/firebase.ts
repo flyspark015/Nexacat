@@ -1,8 +1,8 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getAnalytics, Analytics, isSupported } from "firebase/analytics";
-import { getStorage } from "firebase/storage";
+import { getStorage, connectStorageEmulator } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1NXJac5yAj0bPtiqO5XfwjjKAbCbGiUU",
@@ -15,12 +15,45 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app;
+try {
+  app = initializeApp(firebaseConfig);
+  console.log('✅ Firebase initialized successfully');
+} catch (error) {
+  console.error('❌ Firebase initialization error:', error);
+  throw new Error('Failed to initialize Firebase. Please check your configuration.');
+}
 
-// Initialize services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+// Initialize services with error handling
+let auth;
+let db;
+let storage;
+
+try {
+  auth = getAuth(app);
+  console.log('✅ Firebase Auth initialized');
+} catch (error) {
+  console.error('❌ Firebase Auth initialization error:', error);
+  throw error;
+}
+
+try {
+  db = getFirestore(app);
+  console.log('✅ Firestore initialized');
+} catch (error) {
+  console.error('❌ Firestore initialization error:', error);
+  throw error;
+}
+
+try {
+  storage = getStorage(app);
+  console.log('✅ Firebase Storage initialized');
+} catch (error) {
+  console.error('❌ Firebase Storage initialization error:', error);
+  throw error;
+}
+
+export { auth, db, storage };
 
 // Analytics (only in browser and gracefully handle errors in sandboxed environments)
 let analyticsInstance: Analytics | null = null;
@@ -30,8 +63,9 @@ if (typeof window !== 'undefined' && import.meta.env.PROD) {
     if (supported) {
       try {
         analyticsInstance = getAnalytics(app);
+        console.log('✅ Firebase Analytics initialized');
       } catch (error) {
-        console.warn('Firebase Analytics initialization failed:', error);
+        console.warn('⚠️ Firebase Analytics initialization failed:', error);
       }
     }
   }).catch(() => {

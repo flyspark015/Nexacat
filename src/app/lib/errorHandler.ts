@@ -86,6 +86,16 @@ export function getErrorMessage(error: unknown): string {
 
   // Handle Firebase errors
   if (error instanceof FirebaseError) {
+    // Special handling for installations/app-offline error
+    if (error.code === 'installations/app-offline') {
+      return '🔥 Firebase Setup Required: Please enable Authentication, Firestore, and Storage in Firebase Console. See FIREBASE_SETUP_REQUIRED.md for instructions.';
+    }
+
+    // Special handling for unavailable/offline errors
+    if (error.code === 'unavailable' || error.message?.includes('unavailable')) {
+      return '🔥 Firebase services not enabled. Please set up Firestore Database in Firebase Console. See FIREBASE_SETUP_REQUIRED.md for step-by-step instructions.';
+    }
+
     // Check auth errors
     if (error.code in authErrorMessages) {
       return authErrorMessages[error.code];

@@ -6,6 +6,12 @@
 
 ## 🚀 START HERE (Choose Your Path)
 
+### 🔴 Getting "Firebase Error: app-offline"?
+**Start with:** `FIREBASE_SETUP_REQUIRED.md` ⚡ URGENT  
+**Why:** Fix the error in 10 minutes  
+**Time:** 10 minutes  
+**Result:** Error gone, Firebase working
+
 ### 🟢 Never Used Firebase Before?
 **Start with:** `VISUAL_DEPLOYMENT_GUIDE.md`  
 **Why:** Step-by-step with exact clicks and screenshots  
