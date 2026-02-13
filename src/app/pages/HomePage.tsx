@@ -110,10 +110,10 @@ export function HomePage() {
                   to={`/category/${category.slug}`}
                   className="group relative overflow-hidden rounded-2xl border border-border bg-card transition-all hover:shadow-xl"
                 >
-                  <div className="aspect-[4/3] overflow-hidden bg-muted">
-                    {category.image ? (
+                  <div className="aspect-[4/3] overflow-hidden bg-muted relative">
+                    {category.imageLocalPath ? (
                       <img
-                        src={category.image}
+                        src={category.imageLocalPath}
                         alt={category.name}
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />

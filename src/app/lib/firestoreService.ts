@@ -21,7 +21,17 @@ const removeUndefined = <T extends Record<string, any>>(obj: T): Partial<T> => {
   const cleaned: any = {};
   Object.keys(obj).forEach((key) => {
     if (obj[key] !== undefined) {
-      cleaned[key] = obj[key];
+      // Handle arrays (like order items)
+      if (Array.isArray(obj[key])) {
+        cleaned[key] = obj[key].map((item: any) => {
+          if (typeof item === 'object' && item !== null) {
+            return removeUndefined(item);
+          }
+          return item;
+        });
+      } else {
+        cleaned[key] = obj[key];
+      }
     }
   });
   return cleaned;
@@ -306,8 +316,9 @@ export const deleteProduct = async (id: string) => {
 
 // Orders
 export const createOrder = async (orderData: Omit<Order, "id" | "createdAt">) => {
+  const cleanedData = removeUndefined(orderData);
   const docRef = await addDoc(collection(db, "orders"), {
-    ...orderData,
+    ...cleanedData,
     createdAt: serverTimestamp(),
   });
   return docRef.id;
