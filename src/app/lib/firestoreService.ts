@@ -16,6 +16,17 @@ import {
 import { db } from "./firebase";
 import { Product, Category, Order, User, ProductVariation, SystemSettings } from "./types";
 
+// Helper function to remove undefined values from objects
+const removeUndefined = <T extends Record<string, any>>(obj: T): Partial<T> => {
+  const cleaned: any = {};
+  Object.keys(obj).forEach((key) => {
+    if (obj[key] !== undefined) {
+      cleaned[key] = obj[key];
+    }
+  });
+  return cleaned;
+};
+
 // Categories
 export const getCategories = async (): Promise<Category[]> => {
   const querySnapshot = await getDocs(collection(db, "categories"));
@@ -33,13 +44,27 @@ export const getCategory = async (id: string): Promise<Category | null> => {
   return null;
 };
 
+export const getCategoryBySlug = async (slug: string): Promise<Category | null> => {
+  const q = query(collection(db, "categories"), where("slug", "==", slug));
+  const querySnapshot = await getDocs(q);
+  
+  if (!querySnapshot.empty) {
+    const docSnapshot = querySnapshot.docs[0];
+    return {
+      id: docSnapshot.id,
+      ...docSnapshot.data(),
+    } as Category;
+  }
+  return null;
+};
+
 export const createCategory = async (data: Omit<Category, "id">) => {
   const docRef = await addDoc(collection(db, "categories"), data);
   return docRef.id;
 };
 
 export const updateCategory = async (id: string, data: Partial<Category>) => {
-  await updateDoc(doc(db, "categories", id), data);
+  await updateDoc(doc(db, "categories", id), removeUndefined(data));
 };
 
 export const deleteCategory = async (id: string) => {
@@ -204,8 +229,11 @@ export const createProduct = async (
 ) => {
   const { variations: _, ...dataWithoutVariations } = productData as any;
   
+  // Remove undefined values before saving to Firestore
+  const cleanedData = removeUndefined(dataWithoutVariations);
+  
   const docRef = await addDoc(collection(db, "products"), {
-    ...dataWithoutVariations,
+    ...cleanedData,
     createdAt: serverTimestamp(),
   });
 
@@ -213,9 +241,10 @@ export const createProduct = async (
   if (productData.productType === "variable" && variations) {
     for (const variation of variations) {
       const { id, ...variationData } = variation;
+      const cleanedVariation = removeUndefined(variationData);
       await addDoc(
         collection(db, "products", docRef.id, "variations"),
-        variationData
+        cleanedVariation
       );
     }
   }
@@ -230,7 +259,7 @@ export const updateProduct = async (
 ) => {
   const { variations: _, createdAt, ...dataWithoutVariations } = productData as any;
   
-  await updateDoc(doc(db, "products", id), dataWithoutVariations);
+  await updateDoc(doc(db, "products", id), removeUndefined(dataWithoutVariations));
 
   // Update variations if provided
   if (productData.productType === "variable" && variations) {

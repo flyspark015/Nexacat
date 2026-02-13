@@ -6,6 +6,7 @@ import { createCategory, updateCategory, getCategory } from "../../lib/firestore
 import { uploadFile } from "../../lib/storageService";
 import { LoadingSpinner } from "../../components/LoadingSpinner";
 import { toast } from "sonner";
+import { AuthDebug } from "../../components/AuthDebug";
 
 export function AdminCategoryForm() {
   const navigate = useNavigate();
@@ -169,6 +170,9 @@ export function AdminCategoryForm() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Auth Debug - Remove after fixing */}
+      <AuthDebug />
+      
       {/* Header */}
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-8">

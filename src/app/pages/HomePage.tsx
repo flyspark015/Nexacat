@@ -12,6 +12,7 @@ export function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [categoryProductCounts, setCategoryProductCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const loadData = async () => {
@@ -25,6 +26,13 @@ export function HomePage() {
         setCategories(categoriesData);
         setProducts(productsData.slice(0, 8)); // Show up to 8 featured products
         setSettings(settingsData);
+        
+        // Calculate product counts per category
+        const counts: Record<string, number> = {};
+        categoriesData.forEach(category => {
+          counts[category.id] = productsData.filter(p => p.categoryId === category.id).length;
+        });
+        setCategoryProductCounts(counts);
       } catch (error) {
         console.error("Error loading homepage data:", error);
       } finally {
@@ -103,13 +111,26 @@ export function HomePage() {
                   className="group relative overflow-hidden rounded-2xl border border-border bg-card transition-all hover:shadow-xl"
                 >
                   <div className="aspect-[4/3] overflow-hidden bg-muted">
-                    <div className="flex h-full w-full items-center justify-center">
-                      <Package className="h-16 w-16 text-muted-foreground/30" />
-                    </div>
+                    {category.image ? (
+                      <img
+                        src={category.image}
+                        alt={category.name}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Package className="h-16 w-16 text-muted-foreground/30" />
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   </div>
                   <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <h3 className="mb-2 text-2xl font-bold">{category.name}</h3>
+                    <div className="mb-2 flex items-center justify-between">
+                      <h3 className="text-2xl font-bold">{category.name}</h3>
+                      <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-medium backdrop-blur-sm">
+                        {categoryProductCounts[category.id] || 0} Products
+                      </span>
+                    </div>
                     <div className="flex items-center justify-end">
                       <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                     </div>

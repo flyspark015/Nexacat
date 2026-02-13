@@ -339,7 +339,7 @@ export function ProductDetailPage() {
               )}
             </div>
 
-            {/* Name & Brand */}
+            {/* Product Title */}
             <div>
               {product.brand && (
                 <p className="mb-2 text-sm text-muted-foreground">{product.brand}</p>
@@ -347,20 +347,6 @@ export function ProductDetailPage() {
               <h1 className="mb-4 text-3xl font-bold tracking-tight md:text-4xl">
                 {product.name}
               </h1>
-              
-              {/* Short Description */}
-              {product.shortDescription && product.shortDescription.length > 0 && (
-                <ul className="mb-4 space-y-2">
-                  {product.shortDescription.map((desc, index) => (
-                    <li key={index} className="flex items-start gap-2 text-muted-foreground">
-                      <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-accent" />
-                      <span>{desc}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              
-              <p className="text-muted-foreground">{product.description}</p>
             </div>
 
             {/* Tags */}
@@ -506,16 +492,49 @@ export function ProductDetailPage() {
                 Contact for Availability
               </Button>
             )}
+
+            {/* Short Description - Below Add to Cart */}
+            {product.shortDescription && product.shortDescription.length > 0 && (
+              <div className="rounded-xl border bg-card p-6">
+                <h3 className="mb-3 text-lg font-semibold">Key Features</h3>
+                <ul className="space-y-2">
+                  {product.shortDescription.map((desc, index) => (
+                    <li key={index} className="flex items-start gap-2 text-muted-foreground">
+                      <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-accent" />
+                      <span>{desc}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Tabs Section */}
-        {(Object.keys(product.specs).length > 0 || product.tags.length > 0) && (
+        {(Object.keys(product.specs).length > 0 || product.description || product.tags.length > 0) && (
           <div className="mt-16">
-            <Tabs defaultValue="specifications" className="w-full">
-              <TabsList className="grid w-full max-w-md grid-cols-1">
+            <Tabs defaultValue="description" className="w-full">
+              <TabsList className="grid w-full max-w-md grid-cols-2">
+                <TabsTrigger value="description">Detailed Description</TabsTrigger>
                 <TabsTrigger value="specifications">Specifications</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="description" className="mt-6">
+                <div className="rounded-xl border bg-card p-6">
+                  <h3 className="mb-4 text-xl font-semibold">
+                    About this Product
+                  </h3>
+                  {product.description ? (
+                    <div className="prose prose-sm max-w-none text-muted-foreground">
+                      <p className="whitespace-pre-wrap">{product.description}</p>
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      No detailed description available
+                    </p>
+                  )}
+                </div>
+              </TabsContent>
 
               <TabsContent value="specifications" className="mt-6">
                 <div className="rounded-xl border bg-card p-6">

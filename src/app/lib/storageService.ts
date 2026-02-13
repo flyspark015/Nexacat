@@ -1,5 +1,5 @@
 import { storage } from './firebase';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable } from 'firebase/storage';
 
 /**
  * Validate image file type and size
@@ -106,6 +106,69 @@ export const uploadFavicon = async (file: File): Promise<string> => {
  */
 export const uploadProductImage = async (file: File): Promise<string> => {
   return uploadImage(file, 'products');
+};
+
+/**
+ * Upload product image with progress tracking (overloaded version)
+ * @param productId - The product ID (optional, for organizing files)
+ * @param file - The product image file to upload
+ * @param onProgress - Optional progress callback
+ * @returns The download URL of the uploaded product image
+ */
+export const uploadProductImageWithProgress = async (
+  productId: string,
+  file: File,
+  onProgress?: (progress: number) => void
+): Promise<string> => {
+  // Validate file first
+  const validation = validateImageFile(file);
+  if (!validation.valid) {
+    throw new Error(validation.error);
+  }
+
+  try {
+    // Generate unique filename
+    const timestamp = Date.now();
+    const fileName = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const path = `products/${fileName}`;
+
+    const storageRef = ref(storage, path);
+    
+    if (onProgress) {
+      // Use uploadBytesResumable for progress tracking
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      return new Promise((resolve, reject) => {
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            onProgress(progress);
+          },
+          (error) => {
+            console.error('Error uploading product image:', error);
+            reject(new Error('Failed to upload product image. Please try again.'));
+          },
+          async () => {
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve(downloadURL);
+            } catch (error) {
+              reject(error);
+            }
+          }
+        );
+      });
+    } else {
+      // Simple upload without progress
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      return downloadURL;
+    }
+  } catch (error) {
+    console.error('Error uploading product image:', error);
+    throw new Error('Failed to upload product image. Please try again.');
+  }
 };
 
 /**

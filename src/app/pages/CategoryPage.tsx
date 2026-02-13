@@ -7,12 +7,12 @@ import { Checkbox } from "../components/ui/checkbox";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "../components/ui/sheet";
-import { getCategory, getProductsByCategory, getAllProducts } from "../lib/firestoreService";
+import { getCategoryBySlug, getProductsByCategory, getAllProducts } from "../lib/firestoreService";
 import { Category, Product } from "../lib/types";
 import { LoadingSpinner } from "../components/LoadingSpinner";
 
 export function CategoryPage() {
-  const { categoryId } = useParams();
+  const { categoryId } = useParams(); // This is actually the slug from the URL
   const [category, setCategory] = useState<Category | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,12 +28,17 @@ export function CategoryPage() {
     try {
       setLoading(true);
       if (categoryId) {
-        const [cat, prods] = await Promise.all([
-          getCategory(categoryId),
-          getProductsByCategory(categoryId),
-        ]);
+        // Get category by slug
+        const cat = await getCategoryBySlug(categoryId);
         setCategory(cat);
-        setProducts(prods);
+        
+        if (cat) {
+          // Get products by category ID
+          const prods = await getProductsByCategory(cat.id);
+          setProducts(prods);
+        } else {
+          setProducts([]);
+        }
       } else {
         const prods = await getAllProducts();
         setProducts(prods);

@@ -92,7 +92,7 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
   };
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-lg border border-border bg-surface transition-all hover:shadow-lg hover:shadow-blue-accent/10">
+    <Link to={`/product/${product.slug}`} className="group relative flex flex-col overflow-hidden rounded-lg border border-border bg-surface transition-all hover:shadow-lg hover:shadow-blue-accent/10">
       {/* Product Type Badge for Variable Products */}
       {isVariableProduct && (
         <div className="absolute left-3 top-3 z-10">
@@ -104,20 +104,22 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
       
       {/* Quick Actions */}
       <div className="absolute right-2 top-2 z-10 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-        <Link to={`/product/${product.slug}`}>
-          <Button
-            size="sm"
-            variant="secondary"
-            className="h-8 w-8 rounded-full p-0 bg-background/90 backdrop-blur-sm hover:bg-background"
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-        </Link>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="h-8 w-8 rounded-full p-0 bg-background/90 backdrop-blur-sm hover:bg-background"
+          onClick={(e) => e.preventDefault()}
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
         {!isVariableProduct && (
           <Button
             size="sm"
             variant="secondary"
-            onClick={handleAddToCart}
+            onClick={(e) => {
+              e.preventDefault();
+              handleAddToCart(e);
+            }}
             className="h-8 w-8 rounded-full p-0 bg-background/90 backdrop-blur-sm hover:bg-background"
           >
             <ShoppingCart className="h-4 w-4" />
@@ -186,17 +188,17 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
               variant="outline"
               className="h-9 w-9"
               onClick={(e) => e.preventDefault()}
-              asChild
             >
-              <Link to={`/product/${product.slug}`}>
-                <Eye className="h-4 w-4" />
-              </Link>
+              <Eye className="h-4 w-4" />
             </Button>
             {canAddToCart && (
               <Button
                 size="icon"
                 className="h-9 w-9 bg-blue-accent hover:bg-blue-accent/90 text-blue-accent-foreground"
-                onClick={handleAddToCart}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleAddToCart(e);
+                }}
               >
                 <ShoppingCart className="h-4 w-4" />
               </Button>
@@ -204,6 +206,6 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

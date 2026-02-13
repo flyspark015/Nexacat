@@ -1,0 +1,144 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // ============================================
+    // Helper Functions
+    // ============================================
+    
+    // Check if user is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Check if user is admin
+    function isAdmin() {
+      return isSignedIn() && 
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Check if file is an image
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // Check if file is under 5MB
+    function isUnder5MB() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+    
+    // Check if file is under 2MB
+    function isUnder2MB() {
+      return request.resource.size < 2 * 1024 * 1024;
+    }
+    
+    // ============================================
+    // Product Images
+    // Path: products/{fileName}
+    // ============================================
+    
+    match /products/{fileName} {
+      // Public read access
+      allow read: if true;
+      
+      // Only admins can upload product images
+      allow write: if isAdmin() && 
+                     isImage() && 
+                     isUnder5MB();
+      
+      // Only admins can delete product images
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Category Images
+    // Path: categories/{fileName}
+    // ============================================
+    
+    match /categories/{fileName} {
+      // Public read access
+      allow read: if true;
+      
+      // Only admins can upload category images
+      allow write: if isAdmin() && 
+                     isImage() && 
+                     isUnder5MB();
+      
+      // Only admins can delete category images
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Logos
+    // Path: logos/{fileName}
+    // ============================================
+    
+    match /logos/{fileName} {
+      // Public read access
+      allow read: if true;
+      
+      // Only admins can upload logos
+      allow write: if isAdmin() && 
+                     isImage() && 
+                     isUnder2MB();
+      
+      // Only admins can delete logos
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Favicons
+    // Path: favicons/{fileName}
+    // ============================================
+    
+    match /favicons/{fileName} {
+      // Public read access
+      allow read: if true;
+      
+      // Only admins can upload favicons
+      allow write: if isAdmin() && 
+                     isImage() && 
+                     isUnder2MB();
+      
+      // Only admins can delete favicons
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Payment QR Codes
+    // Path: payment/{fileName}
+    // ============================================
+    
+    match /payment/{fileName} {
+      // Public read access
+      allow read: if true;
+      
+      // Only admins can upload payment QR codes
+      allow write: if isAdmin() && 
+                     isImage() && 
+                     isUnder2MB();
+      
+      // Only admins can delete payment QR codes
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Settings (Legacy - for backward compatibility)
+    // Path: settings/{fileName}
+    // ============================================
+    
+    match /settings/{fileName} {
+      // Public read access
+      allow read: if true;
+      
+      // Only admins can upload logo/favicon
+      allow write: if isAdmin() && 
+                     isImage() && 
+                     isUnder2MB();
+      
+      // Only admins can delete logo/favicon
+      allow delete: if isAdmin();
+    }
+  }
+}

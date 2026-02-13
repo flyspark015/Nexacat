@@ -45,10 +45,10 @@ service firebase.storage {
     
     // ========================================================================
     // PRODUCT IMAGES
-    // Path: products/{productId}/{fileName}
+    // Path: products/{fileName}
     // ========================================================================
     
-    match /products/{productId}/{fileName} {
+    match /products/{fileName} {
       // Anyone can read product images (public access)
       allow read: if true;
       
@@ -58,7 +58,63 @@ service firebase.storage {
     }
     
     // ========================================================================
-    // SETTINGS (LOGO, FAVICON)
+    // CATEGORY IMAGES
+    // Path: categories/{fileName}
+    // ========================================================================
+    
+    match /categories/{fileName} {
+      // Anyone can read category images (public access)
+      allow read: if true;
+      
+      // Only admins can create/update/delete category images
+      allow create, update: if isAdmin() && isImage() && isValidSize();
+      allow delete: if isAdmin();
+    }
+    
+    // ========================================================================
+    // LOGOS
+    // Path: logos/{fileName}
+    // ========================================================================
+    
+    match /logos/{fileName} {
+      // Anyone can read logos (public access)
+      allow read: if true;
+      
+      // Only admins can upload/update/delete logos
+      allow create, update: if isAdmin() && isImage() && isValidSize();
+      allow delete: if isAdmin();
+    }
+    
+    // ========================================================================
+    // FAVICONS
+    // Path: favicons/{fileName}
+    // ========================================================================
+    
+    match /favicons/{fileName} {
+      // Anyone can read favicons (public access)
+      allow read: if true;
+      
+      // Only admins can upload/update/delete favicons
+      allow create, update: if isAdmin() && isImage() && isValidSize();
+      allow delete: if isAdmin();
+    }
+    
+    // ========================================================================
+    // PAYMENT QR CODES
+    // Path: payment/{fileName}
+    // ========================================================================
+    
+    match /payment/{fileName} {
+      // Anyone can read payment QR codes (public access)
+      allow read: if true;
+      
+      // Only admins can upload/update/delete payment QR codes
+      allow create, update: if isAdmin() && isImage() && isValidSize();
+      allow delete: if isAdmin();
+    }
+    
+    // ========================================================================
+    // SETTINGS (LEGACY - for backward compatibility)
     // Path: settings/{fileName}
     // ========================================================================
     

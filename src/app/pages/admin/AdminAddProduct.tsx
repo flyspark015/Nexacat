@@ -11,7 +11,7 @@ import { Progress } from "../../components/ui/progress";
 import { toast } from "sonner";
 import { Product, ProductVariation } from "../../lib/types";
 import { getProduct, createProduct, updateProduct, getCategories } from "../../lib/firestoreService";
-import { uploadProductImage, validateImageFile } from "../../lib/storageService";
+import { uploadProductImageWithProgress, validateImageFile } from "../../lib/storageService";
 import { generateSlug } from "../../lib/utils";
 
 interface ImageUpload {
@@ -183,9 +183,20 @@ export function AdminAddProduct() {
 
   // Tags
   const handleAddTag = () => {
-    if (newTag.trim() && !tags.includes(newTag.trim())) {
-      setTags([...tags, newTag.trim()]);
-      setNewTag("");
+    if (newTag.trim()) {
+      // Split by comma and trim each entry
+      const newTags = newTag
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0 && !tags.includes(tag)); // Filter out empty and duplicate tags
+      
+      if (newTags.length > 0) {
+        setTags([...tags, ...newTags]);
+        setNewTag("");
+      } else if (newTag.trim() && tags.includes(newTag.trim())) {
+        toast.info("Tag already exists");
+        setNewTag("");
+      }
     }
   };
 
@@ -195,9 +206,20 @@ export function AdminAddProduct() {
 
   // Short Description
   const handleAddShortDesc = () => {
-    if (newShortDesc.trim() && !shortDescription.includes(newShortDesc.trim())) {
-      setShortDescription([...shortDescription, newShortDesc.trim()]);
-      setNewShortDesc("");
+    if (newShortDesc.trim()) {
+      // Split by comma and trim each entry
+      const newDescs = newShortDesc
+        .split(',')
+        .map(desc => desc.trim())
+        .filter(desc => desc.length > 0 && !shortDescription.includes(desc)); // Filter out empty and duplicate descriptions
+      
+      if (newDescs.length > 0) {
+        setShortDescription([...shortDescription, ...newDescs]);
+        setNewShortDesc("");
+      } else if (newShortDesc.trim() && shortDescription.includes(newShortDesc.trim())) {
+        toast.info("Description already exists");
+        setNewShortDesc("");
+      }
     }
   };
 
@@ -303,7 +325,7 @@ export function AdminAddProduct() {
 
           const tempProductId = isEditing ? productId : `temp-${Date.now()}`;
           
-          const downloadUrl = await uploadProductImage(
+          const downloadUrl = await uploadProductImageWithProgress(
             tempProductId!,
             img.file,
             (progress) => {
@@ -379,7 +401,8 @@ export function AdminAddProduct() {
       navigate("/admin/products");
     } catch (error) {
       console.error("Error saving product:", error);
-      toast.error("Failed to save product");
+      const errorMessage = error instanceof Error ? error.message : "Failed to save product";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
       setUploadingImages(false);
@@ -888,7 +911,7 @@ export function AdminAddProduct() {
                 <div className="flex gap-2">
                   <Input
                     id="newTag"
-                    placeholder="e.g., Professional"
+                    placeholder="e.g., fast, durable, lightweight (comma-separated)"
                     value={newTag}
                     onChange={e => setNewTag(e.target.value)}
                     onKeyPress={e =>
@@ -900,6 +923,9 @@ export function AdminAddProduct() {
                     Add
                   </Button>
                 </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Add multiple tags at once by separating with commas
+                </p>
               </div>
 
               {tags.length > 0 && (
@@ -930,11 +956,11 @@ export function AdminAddProduct() {
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="newShortDesc">Add Short Description</Label>
+                <Label htmlFor="newShortDesc">Add Key Features</Label>
                 <div className="flex gap-2">
                   <Input
                     id="newShortDesc"
-                    placeholder="e.g., Professional"
+                    placeholder="e.g., 5V output, 60A ESC, low noise (comma-separated)"
                     value={newShortDesc}
                     onChange={e => setNewShortDesc(e.target.value)}
                     onKeyPress={e =>
@@ -946,6 +972,9 @@ export function AdminAddProduct() {
                     Add
                   </Button>
                 </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Add multiple features at once by separating with commas
+                </p>
               </div>
 
               {shortDescription.length > 0 && (

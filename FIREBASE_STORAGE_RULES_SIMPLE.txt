@@ -1,0 +1,68 @@
+// ============================================================================
+// FIREBASE STORAGE RULES - SIMPLIFIED FOR DEVELOPMENT
+// ============================================================================
+// 
+// DEPLOYMENT INSTRUCTIONS:
+// 
+// 1. Open Firebase Console (https://console.firebase.com/project/flyspark-cb85e)
+// 2. Click "Storage" in left sidebar
+// 3. Click "Rules" tab at the top
+// 4. REPLACE ALL EXISTING RULES with the code below
+// 5. Click "Publish" button
+// 
+// ============================================================================
+
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // ========================================================================
+    // PRODUCTS - Product images
+    // ========================================================================
+    match /products/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // ========================================================================
+    // CATEGORIES - Category images  
+    // ========================================================================
+    match /categories/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // ========================================================================
+    // LOGOS - Company logos
+    // ========================================================================
+    match /logos/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // ========================================================================
+    // FAVICONS - Site favicons
+    // ========================================================================
+    match /favicons/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // ========================================================================
+    // PAYMENT - Payment QR codes
+    // ========================================================================
+    match /payment/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // ========================================================================
+    // SETTINGS - Legacy support
+    // ========================================================================
+    match /settings/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
