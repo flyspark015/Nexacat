@@ -13,6 +13,7 @@ import {
   Home,
   Zap,
   Settings,
+  MessageSquare,
 } from "lucide-react";
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -36,6 +37,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     { path: "/admin/categories", label: "Categories", icon: FolderTree },
     { path: "/admin/orders", label: "Orders", icon: ShoppingCart },
     { path: "/admin/users", label: "Users", icon: Users },
+    { path: "/admin/faqs", label: "FAQs", icon: MessageSquare },
     { path: "/admin/settings", label: "Settings", icon: Settings },
   ];
 

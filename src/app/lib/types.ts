@@ -99,6 +99,33 @@ export interface SystemSettings {
   paymentQrCodeUrl?: string;
 }
 
+// FAQ System
+export interface FAQ {
+  id: string;
+  productId: string;
+  productName: string;
+  question: string;
+  answer?: string;
+  status: "pending" | "answered";
+  askedBy: string; // Name
+  mobile: string;
+  contactId: string; // Reference to Contact
+  createdAt: Date;
+  answeredAt?: Date;
+  isPublished: boolean; // Admin can hide/show
+}
+
+// Contact Database for Marketing
+export interface Contact {
+  id: string;
+  name: string;
+  mobile: string;
+  firstSeen: Date;
+  lastSeen: Date;
+  relatedProducts: string[]; // Product IDs
+  totalQuestions: number;
+}
+
 // Cart types (local storage + Zustand)
 export interface CartItem {
   productId: string;

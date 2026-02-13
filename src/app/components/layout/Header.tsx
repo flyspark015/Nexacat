@@ -6,7 +6,7 @@ import { Badge } from "../ui/badge";
 import { useCart } from "../../lib/cartStore";
 import { useAuthStore } from "../../lib/authStore";
 import { useState, useEffect } from "react";
-import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "../ui/sheet";
 import { getCategories, getSettings } from "../../lib/firestoreService";
 import { SystemSettings, Category } from "../../lib/types";
 
@@ -176,6 +176,10 @@ export function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[300px] sm:w-[400px]">
+                <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+                <SheetDescription className="sr-only">
+                  Access site navigation, categories, and account options
+                </SheetDescription>
                 <nav className="flex flex-col gap-4 mt-8">
                   <Link to="/" className="text-lg font-semibold">
                     Home

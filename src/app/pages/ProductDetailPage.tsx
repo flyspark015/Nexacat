@@ -15,6 +15,7 @@ import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Label } from "../components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { ProductCard } from "../components/ProductCard";
+import { ProductFAQ } from "../components/ProductFAQ";
 import { useCart } from "../lib/cartStore";
 import { toast } from "sonner";
 import {
@@ -580,6 +581,11 @@ export function ProductDetailPage() {
             </div>
           </div>
         )}
+
+        {/* FAQ Section */}
+        <div className="mt-16">
+          <ProductFAQ productId={product.id} productName={product.name} />
+        </div>
       </div>
     </div>
   );

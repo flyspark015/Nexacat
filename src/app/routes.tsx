@@ -21,6 +21,7 @@ import { AdminCategoryForm } from "./pages/admin/AdminCategoryForm";
 import { AdminOrders } from "./pages/admin/AdminOrders";
 import { AdminUsers } from "./pages/admin/AdminUsers";
 import { AdminSettings } from "./pages/admin/AdminSettings";
+import { AdminFAQs } from "./pages/admin/AdminFAQs";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { AllProductsPage } from "./pages/AllProductsPage";
 
@@ -163,6 +164,16 @@ export const router = createBrowserRouter([
       <ProtectedRoute requireAdmin>
         <AdminLayout>
           <AdminSettings />
+        </AdminLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/admin/faqs",
+    element: (
+      <ProtectedRoute requireAdmin>
+        <AdminLayout>
+          <AdminFAQs />
         </AdminLayout>
       </ProtectedRoute>
     ),

@@ -14,7 +14,7 @@ import {
   addDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Product, Category, Order, User, ProductVariation, SystemSettings } from "./types";
+import { Product, Category, Order, User, ProductVariation, SystemSettings, FAQ, Contact } from "./types";
 
 // Helper function to remove undefined values from objects
 const removeUndefined = <T extends Record<string, any>>(obj: T): Partial<T> => {
@@ -485,4 +485,142 @@ export const getSettings = async (): Promise<SystemSettings | null> => {
 export const updateSettings = async (settings: Partial<SystemSettings>) => {
   const { id, ...settingsData } = settings;
   await setDoc(doc(db, "settings", SETTINGS_DOC_ID), settingsData, { merge: true });
+};
+
+// Contacts (Marketing Database)
+export const getOrCreateContact = async (mobile: string, name: string, productId: string): Promise<string> => {
+  // Normalize mobile number
+  const normalizedMobile = mobile.replace(/\D/g, '');
+  
+  // Check if contact already exists
+  const q = query(collection(db, "contacts"), where("mobile", "==", normalizedMobile));
+  const querySnapshot = await getDocs(q);
+  
+  if (!querySnapshot.empty) {
+    // Update existing contact
+    const contactDoc = querySnapshot.docs[0];
+    const contactData = contactDoc.data();
+    const relatedProducts = contactData.relatedProducts || [];
+    
+    await updateDoc(contactDoc.ref, {
+      name, // Update name in case it changed
+      lastSeen: serverTimestamp(),
+      relatedProducts: relatedProducts.includes(productId) 
+        ? relatedProducts 
+        : [...relatedProducts, productId],
+      totalQuestions: (contactData.totalQuestions || 0) + 1,
+    });
+    
+    return contactDoc.id;
+  } else {
+    // Create new contact
+    const docRef = await addDoc(collection(db, "contacts"), {
+      name,
+      mobile: normalizedMobile,
+      firstSeen: serverTimestamp(),
+      lastSeen: serverTimestamp(),
+      relatedProducts: [productId],
+      totalQuestions: 1,
+    });
+    
+    return docRef.id;
+  }
+};
+
+export const getContacts = async (): Promise<Contact[]> => {
+  const querySnapshot = await getDocs(collection(db, "contacts"));
+  return querySnapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+    firstSeen: doc.data().firstSeen?.toDate() || new Date(),
+    lastSeen: doc.data().lastSeen?.toDate() || new Date(),
+  })) as Contact[];
+};
+
+// FAQs
+export const createFAQ = async (faqData: Omit<FAQ, "id" | "createdAt" | "status" | "isPublished">) => {
+  const docRef = await addDoc(collection(db, "faqs"), {
+    ...faqData,
+    status: "pending",
+    isPublished: false,
+    createdAt: serverTimestamp(),
+  });
+  return docRef.id;
+};
+
+export const getFAQs = async (filters?: {
+  productId?: string;
+  status?: "pending" | "answered";
+  isPublished?: boolean;
+}): Promise<FAQ[]> => {
+  let q = collection(db, "faqs");
+  
+  const constraints = [];
+  if (filters?.productId) {
+    constraints.push(where("productId", "==", filters.productId));
+  }
+  if (filters?.status) {
+    constraints.push(where("status", "==", filters.status));
+  }
+  if (filters?.isPublished !== undefined) {
+    constraints.push(where("isPublished", "==", filters.isPublished));
+  }
+  
+  const queryRef = constraints.length > 0 
+    ? query(q, ...constraints, orderBy("createdAt", "desc"))
+    : query(q, orderBy("createdAt", "desc"));
+  
+  try {
+    const querySnapshot = await getDocs(queryRef);
+    return querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      answeredAt: doc.data().answeredAt?.toDate(),
+    })) as FAQ[];
+  } catch (error: any) {
+    // Fallback if index doesn't exist
+    if (error.code === 'failed-precondition') {
+      const simpleQuery = constraints.length > 0 ? query(q, ...constraints) : q;
+      const querySnapshot = await getDocs(simpleQuery);
+      const faqs = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        answeredAt: doc.data().answeredAt?.toDate(),
+      })) as FAQ[];
+      
+      return faqs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    }
+    throw error;
+  }
+};
+
+export const getFAQ = async (id: string): Promise<FAQ | null> => {
+  const docSnap = await getDoc(doc(db, "faqs", id));
+  if (docSnap.exists()) {
+    return {
+      id: docSnap.id,
+      ...docSnap.data(),
+      createdAt: docSnap.data().createdAt?.toDate() || new Date(),
+      answeredAt: docSnap.data().answeredAt?.toDate(),
+    } as FAQ;
+  }
+  return null;
+};
+
+export const updateFAQ = async (id: string, data: Partial<FAQ>) => {
+  const updateData = removeUndefined(data);
+  
+  // If answering the FAQ, set answeredAt and update status
+  if (data.answer && !data.answeredAt) {
+    (updateData as any).answeredAt = serverTimestamp();
+    (updateData as any).status = "answered";
+  }
+  
+  await updateDoc(doc(db, "faqs", id), updateData);
+};
+
+export const deleteFAQ = async (id: string) => {
+  await deleteDoc(doc(db, "faqs", id));
 };

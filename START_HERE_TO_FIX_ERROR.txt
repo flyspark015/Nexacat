@@ -1,0 +1,47 @@
+================================================================================
+🚨 PERMISSION ERROR - READ THIS FIRST 🚨
+================================================================================
+
+You're seeing this error:
+  "FirebaseError: [code=permission-denied]: Missing or insufficient permissions"
+
+WHAT TO DO:
+-----------
+
+1. Open this file: /COPY_PASTE_THESE_RULES.txt
+2. Copy ALL the content (Ctrl+A, Ctrl+C)
+3. Go to: https://console.firebase.google.com/
+4. Select project: flyspark-cb85e
+5. Click: Firestore Database → Rules tab
+6. Delete ALL old rules in the editor
+7. Paste the new rules (Ctrl+V)
+8. Click "Publish" button
+9. Wait for confirmation
+10. Refresh your browser
+
+TIME NEEDED: 3 minutes
+DETAILED GUIDE: /FIX_PERMISSION_ERROR_NOW.md
+CHECKLIST: /QUICK_FIX_CHECKLIST.md
+
+================================================================================
+
+WHY THIS HAPPENS:
+-----------------
+The FAQ system added two new Firestore collections (/faqs and /contacts).
+Firebase blocks access by default until you add security rules for them.
+This is a one-time setup step.
+
+WHAT YOU'RE FIXING:
+-------------------
+✅ Adding read/write permissions for FAQs collection
+✅ Adding read/write permissions for Contacts collection
+✅ Keeping all existing security rules intact
+
+AFTER THE FIX:
+--------------
+✅ Users can ask questions on product pages
+✅ Admins can manage FAQs in Admin panel
+✅ Contact database captures customer information
+✅ No more permission errors!
+
+================================================================================

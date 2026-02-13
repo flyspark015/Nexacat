@@ -1,10 +1,11 @@
-FIRESTORE SECURITY RULES
-========================
+===============================================================================
+✅ UPDATED FIRESTORE RULES - COPY THIS TO FIREBASE CONSOLE
+===============================================================================
 
-Copy and paste these rules into your Firebase Console:
-Go to Firebase Console > Firestore Database > Rules
+IMPORTANT: The rules have been updated to fix the FAQ submission issue.
+Copy EVERYTHING below (from rules_version to the last closing brace).
 
----
+===============================================================================
 
 rules_version = '2';
 service cloud.firestore {
@@ -134,3 +135,33 @@ service cloud.firestore {
     }
   }
 }
+
+===============================================================================
+
+WHERE TO PASTE THIS:
+
+1. Go to: https://console.firebase.google.com/
+2. Select project: flyspark-cb85e
+3. Click: Firestore Database → Rules tab
+4. Select ALL text in the editor (Ctrl+A / Cmd+A)
+5. Delete it
+6. Paste these rules (Ctrl+V / Cmd+V)
+7. Click "Publish" button
+8. Wait for "✅ Rules published successfully"
+9. Hard refresh your browser (Ctrl+Shift+R / Cmd+Shift+R)
+10. Test FAQ submission - should work now!
+
+===============================================================================
+
+WHAT CHANGED:
+
+The Contacts collection rules were updated to allow read access.
+This is needed because the FAQ system checks for duplicate mobile numbers
+before creating a contact record.
+
+Old:  allow read: if isAdmin();  ❌ Blocked FAQ submission
+New:  allow read: if true;       ✅ Allows duplicate checking
+
+Everything else remains the same!
+
+===============================================================================

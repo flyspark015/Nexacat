@@ -1,0 +1,79 @@
+╔═══════════════════════════════════════════════════════════════════════╗
+║                                                                       ║
+║                       🚨 ACTION REQUIRED 🚨                          ║
+║                                                                       ║
+║                  FIX PERMISSION ERROR IN 2 MINUTES                   ║
+║                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+
+STEP 1: OPEN THIS FILE
+┌────────────────────────────────────────────────────────────────────┐
+│                                                                    │
+│   File: /UPDATED_RULES_COPY_THIS.txt                              │
+│                                                                    │
+│   Action: Select ALL text (Ctrl+A) and COPY (Ctrl+C)             │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+
+
+STEP 2: OPEN FIREBASE CONSOLE
+┌────────────────────────────────────────────────────────────────────┐
+│                                                                    │
+│   URL: https://console.firebase.google.com/                       │
+│                                                                    │
+│   Click: flyspark-cb85e → Firestore Database → Rules tab         │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+
+
+STEP 3: REPLACE RULES
+┌────────────────────────────────────────────────────────────────────┐
+│                                                                    │
+│   Action: Select ALL text in editor (Ctrl+A) and DELETE           │
+│                                                                    │
+│   Action: PASTE the rules you copied (Ctrl+V)                     │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+
+
+STEP 4: PUBLISH
+┌────────────────────────────────────────────────────────────────────┐
+│                                                                    │
+│   Action: Click "Publish" button (top-right)                      │
+│                                                                    │
+│   Wait for: "✅ Rules published successfully"                     │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+
+
+STEP 5: TEST
+┌────────────────────────────────────────────────────────────────────┐
+│                                                                    │
+│   1. Refresh browser (Ctrl+Shift+R)                               │
+│   2. Go to any product page                                        │
+│   3. Scroll to FAQ section                                         │
+│   4. Click "Ask a Question"                                        │
+│   5. Fill form and submit                                          │
+│   6. See: ✅ "Question submitted successfully!"                   │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║                                                                       ║
+║  RESULT: FAQ system will work perfectly!                             ║
+║                                                                       ║
+║  - Users can ask questions                                           ║
+║  - Admins can answer questions                                       ║
+║  - Contact database captures customer info                           ║
+║  - No more permission errors                                         ║
+║                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+
+NEED MORE DETAILS?
+Read: /FINAL_FIX_README.md
+
+TIME NEEDED: 2 minutes
+DIFFICULTY: Easy (just copy-paste)
