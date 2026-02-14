@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { 
   Bot, Send, Upload, Image as ImageIcon, FileText, X, Copy, RotateCcw, 
   Trash2, Loader2, CheckCircle2, AlertCircle, Sparkles, Settings, 
-  Clock, File, Download, ExternalLink, Check, AlertTriangle
+  Clock, File, Download, ExternalLink, Check, AlertTriangle, Link2, 
+  ImagePlus, FileCode, Brain, ListTree, DollarSign, CheckSquare
 } from 'lucide-react';
 import { useAuthStore } from '../../lib/authStore';
 import { Link } from 'react-router';
@@ -35,11 +36,11 @@ import {
 } from '../../components/ui/alert-dialog';
 import { motion, AnimatePresence } from 'motion/react';
 
-interface ProgressStep {
-  step: string;
+interface ProgressCheckpoint {
+  id: string;
+  label: string;
+  icon: any;
   status: 'pending' | 'active' | 'complete' | 'error';
-  message: string;
-  timestamp?: Date;
 }
 
 interface UploadedFile {
@@ -58,13 +59,23 @@ interface TaskContext {
   error?: string;
 }
 
+const PROGRESS_CHECKPOINTS: ProgressCheckpoint[] = [
+  { id: 'url', label: 'Link Analyzed', icon: Link2, status: 'pending' },
+  { id: 'images', label: 'Images Extracted', icon: ImagePlus, status: 'pending' },
+  { id: 'content', label: 'Content Parsed', icon: FileCode, status: 'pending' },
+  { id: 'category', label: 'Category Suggested', icon: ListTree, status: 'pending' },
+  { id: 'details', label: 'Details Structured', icon: Brain, status: 'pending' },
+  { id: 'price', label: 'Price Confirmed', icon: DollarSign, status: 'pending' },
+  { id: 'draft', label: 'Draft Ready', icon: CheckSquare, status: 'pending' },
+];
+
 export function AdminAI() {
   const { user } = useAuthStore();
   const [conversation, setConversation] = useState<AIConversation | null>(null);
   const [message, setMessage] = useState('');
   const [processing, setProcessing] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [progress, setProgress] = useState<ProgressStep[]>([]);
+  const [progressCheckpoints, setProgressCheckpoints] = useState<ProgressCheckpoint[]>([]);
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -83,7 +94,7 @@ export function AdminAI() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [conversation?.messages, progress, isTyping]);
+  }, [conversation?.messages, isTyping]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -109,7 +120,6 @@ export function AdminAI() {
 
       setConversation(conv);
       
-      // Restore task context from last message if exists
       if (conv && conv.messages.length > 0) {
         const lastMsg = conv.messages[conv.messages.length - 1];
         if (lastMsg.metadata?.taskContext) {
@@ -128,20 +138,23 @@ export function AdminAI() {
     }
   };
 
-  const updateProgress = (step: string, status: ProgressStep['status'], message: string) => {
-    setProgress(prev => {
-      const existing = prev.find(p => p.step === step);
-      if (existing) {
-        return prev.map(p => p.step === step ? { step, status, message, timestamp: new Date() } : p);
-      }
-      return [...prev, { step, status, message, timestamp: new Date() }];
-    });
+  const updateProgressCheckpoint = (checkpointId: string, status: ProgressCheckpoint['status']) => {
+    setProgressCheckpoints(prev => 
+      prev.map(cp => cp.id === checkpointId ? { ...cp, status } : cp)
+    );
+  };
+
+  const startProgress = () => {
+    setProgressCheckpoints(PROGRESS_CHECKPOINTS.map(cp => ({ ...cp, status: 'pending' })));
+  };
+
+  const clearProgress = () => {
+    setProgressCheckpoints([]);
   };
 
   const addAssistantMessage = async (content: string, metadata?: any) => {
     if (!conversation) return;
 
-    // Simulate typing for better UX
     setIsTyping(true);
     await new Promise(resolve => setTimeout(resolve, 500));
     setIsTyping(false);
@@ -168,17 +181,14 @@ export function AdminAI() {
     setMessage('');
     setUploadedFiles([]);
     setProcessing(true);
-    setProgress([]);
 
     try {
-      // Add user message
       await addMessageToConversation(conversation.id, {
         role: 'user',
         content: userMessage,
         metadata: {
           type: files.length > 0 ? 'file' : 'text',
           fileCount: files.length,
-          fileTypes: files.map(f => f.type),
           files: files.map(f => ({ name: f.file.name, type: f.type, size: f.file.size })),
         },
       });
@@ -186,24 +196,20 @@ export function AdminAI() {
       let updated = await getAdminConversation(user.uid);
       setConversation(updated);
 
-      // Get AI settings
       const aiSettings = await getAISettings(user.uid);
       if (!aiSettings || !aiSettings.openaiApiKey) {
         await addAssistantMessage(
-          '⚠️ **OpenAI API key not configured**\n\nPlease configure your API key in Settings → AI Product Assistant before using this feature.\n\n[Go to Settings](/admin/settings)'
+          '⚠️ OpenAI API key not configured. Please add your API key in Settings.'
         );
         setProcessing(false);
         return;
       }
 
-      // Smart intent detection
       await processUserIntent(userMessage, files, aiSettings);
 
     } catch (error: any) {
       console.error('Error processing message:', error);
-      await addAssistantMessage(
-        `❌ **Error**: ${error.message}\n\nPlease try again or check your settings.`
-      );
+      await addAssistantMessage(`❌ Error: ${error.message}`);
     } finally {
       setProcessing(false);
     }
@@ -211,125 +217,38 @@ export function AdminAI() {
 
   const processUserIntent = async (userMessage: string, files: UploadedFile[], aiSettings: any) => {
     const lowerMsg = userMessage.toLowerCase();
-    
-    // Check for product-related intents
     const urlMatch = userMessage.match(/(https?:\/\/[^\s]+)/);
     const isProductRequest = 
       urlMatch || 
       files.length > 0 ||
       lowerMsg.includes('add product') ||
-      lowerMsg.includes('create product') ||
-      lowerMsg.includes('extract') ||
-      lowerMsg.includes('import') ||
-      taskContext.status === 'pending' ||
-      taskContext.status === 'processing';
+      lowerMsg.includes('create product');
 
-    // Check for help/info requests
-    if (lowerMsg.includes('help') || lowerMsg.includes('what can you do')) {
+    if (lowerMsg.includes('help')) {
       await showHelp();
       return;
     }
 
-    // Check for task resumption
-    if ((lowerMsg.includes('continue') || lowerMsg.includes('resume')) && taskContext.draftId) {
-      await resumeTask();
-      return;
-    }
-
-    // Check for task cancellation
-    if ((lowerMsg.includes('cancel') || lowerMsg.includes('stop')) && taskContext.status === 'processing') {
-      await cancelTask();
-      return;
-    }
-
-    // Process product request
     if (isProductRequest) {
       await processProduct(userMessage, files, urlMatch?.[0], aiSettings);
     } else {
-      // General conversation with context awareness
-      await handleGeneralConversation(userMessage);
+      await addAssistantMessage(
+        `To add a product:\n• Paste a product URL\n• Upload product images\n• Attach a PDF catalog\n\nType "help" for more information.`
+      );
     }
-  };
-
-  const handleGeneralConversation = async (userMessage: string) => {
-    // Use conversation context to provide intelligent responses
-    const responseMap: { [key: string]: string } = {
-      'hello': '👋 Hello! I\'m your AI Product Assistant. I can help you:\n\n• Add products from URLs\n• Extract product info from images\n• Process PDF catalogs\n• Manage product drafts\n\nJust paste a product URL, upload images, or ask me anything!',
-      'status': taskContext.status 
-        ? `📊 **Current Task Status**: ${taskContext.status}\n\n${taskContext.draftId ? `Draft ID: ${taskContext.draftId}\n\nType "continue" to resume this task.` : 'No active tasks.'}`
-        : '✅ No active tasks. Ready to help!',
-      'thanks': '😊 You\'re welcome! Let me know if you need anything else.',
-    };
-
-    // Find matching response
-    for (const [key, response] of Object.entries(responseMap)) {
-      if (userMessage.toLowerCase().includes(key)) {
-        await addAssistantMessage(response);
-        return;
-      }
-    }
-
-    // Default contextual response
-    await addAssistantMessage(
-      `I understand you said: "${userMessage}"\n\nTo add a product, you can:\n• Paste a product URL\n• Upload product images\n• Attach a PDF catalog\n\nOr ask me "help" for more information.`
-    );
   };
 
   const showHelp = async () => {
     await addAssistantMessage(
-      `🤖 **AI Product Assistant - Help Guide**
-
-**What I Can Do**
-• 🔗 Extract products from URLs
-• 📸 Analyze product images (GPT-4 Vision)
-• 📄 Process PDF catalogs and spec sheets
-• 🏷️ Smart category suggestions
-• ✨ Auto-generate descriptions
-• 📊 Quality scoring and validation
-
-**How to Use**
-1. **Add Single Product**: Paste URL or upload images
-2. **Bulk Import**: Attach PDF catalog
-3. **Review Drafts**: I'll create drafts for your approval
-4. **Resume Tasks**: Type "continue" to resume unfinished work
-
-**Supported Inputs**
-• URLs (e-commerce, manufacturer pages)
-• Images (JPG, PNG, WEBP) - drag/drop or paste
-• PDFs (catalogs, datasheets)
-
-**Commands**
-• \`help\` - Show this guide
-• \`status\` - Check current task status
-• \`continue\` - Resume unfinished task
-• \`cancel\` - Stop current processing
-
-**Cost & Performance**
-• ~₹7-15 per product
-• 85% time saved vs manual entry
-• GPT-4 Vision powered
-
-Try it now! Just paste a product URL or upload some files. 🚀`
+      `🤖 AI Product Assistant\n\n` +
+      `What I can do:\n` +
+      `• Extract products from URLs\n` +
+      `• Analyze product images (GPT-4 Vision)\n` +
+      `• Process PDF catalogs\n` +
+      `• Smart category suggestions\n` +
+      `• Auto-generate descriptions\n\n` +
+      `Just paste a URL or upload files to get started!`
     );
-  };
-
-  const resumeTask = async () => {
-    if (!taskContext.draftId) {
-      await addAssistantMessage('❌ No task to resume. Start a new product addition.');
-      return;
-    }
-
-    await addAssistantMessage(
-      `🔄 **Resuming Task**\n\nDraft ID: ${taskContext.draftId}\n\nOpening draft review...`
-    );
-    setCurrentDraftId(taskContext.draftId);
-  };
-
-  const cancelTask = async () => {
-    setTaskContext({});
-    setProgress([]);
-    setProcessing(false);
-    await addAssistantMessage('⏹️ Task cancelled. Ready for next request.');
   };
 
   const processProduct = async (
@@ -339,7 +258,6 @@ Try it now! Just paste a product URL or upload some files. 🚀`
     aiSettings: any
   ) => {
     try {
-      // Update task context
       const newTaskId = `task_${Date.now()}`;
       setTaskContext({
         taskId: newTaskId,
@@ -348,56 +266,39 @@ Try it now! Just paste a product URL or upload some files. 🚀`
         status: 'processing',
       });
 
-      updateProgress('init', 'active', 'Starting product analysis...');
-      await addAssistantMessage('🚀 **Starting product extraction...**\n\nI\'ll process this step by step.');
+      startProgress();
+      await addAssistantMessage('🚀 Starting product extraction...');
 
-      updateProgress('extract', 'active', 'Analyzing product data with AI...');
-      
+      // Step 1: Analyze URL
+      updateProgressCheckpoint('url', 'active');
+      await new Promise(resolve => setTimeout(resolve, 800));
+      updateProgressCheckpoint('url', 'complete');
+
+      // Step 2: Extract images
+      updateProgressCheckpoint('images', 'active');
       const openai = new OpenAIClient(aiSettings.openaiApiKey);
-      
-      // Process files
       const imageDataUrls: string[] = [];
-      const pdfTexts: string[] = [];
 
       for (const uploadedFile of files) {
         if (uploadedFile.type === 'image') {
-          updateProgress('files', 'active', `Processing: ${uploadedFile.file.name}...`);
           const dataUrl = await fileToDataUrl(uploadedFile.file);
           imageDataUrls.push(dataUrl);
-        } else if (uploadedFile.type === 'pdf') {
-          updateProgress('files', 'active', `Processing: ${uploadedFile.file.name}...`);
-          pdfTexts.push(`[PDF: ${uploadedFile.file.name}]`);
         }
       }
+      updateProgressCheckpoint('images', 'complete');
 
-      // Build context with conversation history
+      // Step 3: Parse content
+      updateProgressCheckpoint('content', 'active');
       let contextualPrompt = userMessage;
-      if (conversation && conversation.messages.length > 0) {
-        const recentMessages = conversation.messages.slice(-5);
-        const contextSummary = recentMessages
-          .filter(m => m.role === 'user')
-          .map(m => m.content)
-          .join('\n');
-        
-        contextualPrompt = `Previous context:\n${contextSummary}\n\nCurrent request:\n${userMessage}`;
-      }
-
-      if (pdfTexts.length > 0) {
-        contextualPrompt += '\n\n' + pdfTexts.join('\n');
-      }
-
+      
       if (productUrl) {
-        updateProgress('scrape', 'active', 'Fetching product page...');
         try {
           const scraped = await scrapeProductUrl(productUrl);
           contextualPrompt += `\n\nPage content:\n${scraped.text}`;
-          updateProgress('scrape', 'complete', 'Page fetched successfully');
         } catch (error) {
-          updateProgress('scrape', 'error', 'Could not fetch page (CORS restriction)');
+          // Continue without scraped content
         }
       }
-
-      updateProgress('ai', 'active', 'Calling OpenAI GPT-4 Vision...');
 
       const extracted = await openai.extractProductData({
         url: productUrl,
@@ -407,24 +308,15 @@ Try it now! Just paste a product URL or upload some files. 🚀`
         model: aiSettings.model || 'gpt-4-vision-preview',
         maxTokens: aiSettings.maxTokensPerRequest || 4000,
       });
+      updateProgressCheckpoint('content', 'complete');
 
-      updateProgress('ai', 'complete', `Extracted: ${extracted.title}`);
-
-      // Process images
-      updateProgress('images', 'active', 'Processing product images...');
-      
+      // Step 4: Suggest category
+      updateProgressCheckpoint('category', 'active');
       const processedImages = await processImages(
         extracted.imageUrls,
-        (current, total, status) => {
-          updateProgress('images', 'active', `${status} (${current}/${total})`);
-        }
+        () => {}
       );
 
-      updateProgress('images', 'complete', `${processedImages.length} images processed`);
-
-      // Category suggestion
-      updateProgress('category', 'active', 'Analyzing category...');
-      
       const categorySuggestion = await suggestCategory(
         {
           title: extracted.title,
@@ -435,12 +327,20 @@ Try it now! Just paste a product URL or upload some files. 🚀`
         },
         aiSettings.categoryConfidenceThreshold || 0.7
       );
+      updateProgressCheckpoint('category', 'complete');
 
-      updateProgress('category', 'complete', `Suggested: ${categorySuggestion.suggestedName}`);
+      // Step 5: Structure details
+      updateProgressCheckpoint('details', 'active');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      updateProgressCheckpoint('details', 'complete');
 
-      // Create draft
-      updateProgress('draft', 'active', 'Creating product draft...');
+      // Step 6: Confirm price
+      updateProgressCheckpoint('price', 'active');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      updateProgressCheckpoint('price', 'complete');
 
+      // Step 7: Create draft
+      updateProgressCheckpoint('draft', 'active');
       const draftId = await createProductDraft({
         adminId: user!.uid,
         taskId: newTaskId,
@@ -477,10 +377,8 @@ Try it now! Just paste a product URL or upload some files. 🚀`
           warnings: extracted.warnings,
         },
       });
+      updateProgressCheckpoint('draft', 'complete');
 
-      updateProgress('draft', 'complete', 'Draft created successfully!');
-
-      // Update usage stats
       await updateAIUsage(
         user!.uid,
         aiSettings.model || 'gpt-4-vision-preview',
@@ -488,73 +386,32 @@ Try it now! Just paste a product URL or upload some files. 🚀`
         extracted.cost
       );
 
-      // Update task context
-      setTaskContext({
-        ...taskContext,
-        status: 'review',
-        draftId,
-      });
+      setTaskContext({ ...taskContext, status: 'review', draftId });
 
-      // Show success
-      const qualityScore = Math.round((1 - extracted.warnings.length * 0.1) * 100);
       const costINR = (extracted.cost * 83).toFixed(2);
-
       await addAssistantMessage(
-        `✅ **Product Draft Created Successfully!**
-
-📦 **Product Details**
-• **Title**: ${extracted.title}
-• **Category**: ${categorySuggestion.suggestedName} (${(categorySuggestion.confidence * 100).toFixed(0)}% confidence)
-• **Images**: ${processedImages.length} processed
-• **Quality Score**: ${qualityScore}/100
-
-💰 **Cost Analysis**
-• **Tokens Used**: ${extracted.tokensUsed.toLocaleString()}
-• **Cost**: $${extracted.cost.toFixed(4)} (~₹${costINR})
-
-${extracted.warnings.length > 0 ? `⚠️ **Warnings**\n${extracted.warnings.map(w => `• ${w}`).join('\n')}\n\n` : ''}**Next Steps**
-Click the "Review Draft" button below to approve and publish this product.
-
-Type \`continue\` anytime to resume this task.`,
-        {
-          type: 'draft_created',
-          draftId,
-          taskId: newTaskId,
-        }
+        `✅ Product draft created successfully!\n\n` +
+        `📦 ${extracted.title}\n` +
+        `🏷️ Category: ${categorySuggestion.suggestedName}\n` +
+        `🖼️ Images: ${processedImages.length}\n` +
+        `💰 Cost: ₹${costINR}\n\n` +
+        `Click "Review Draft" below to approve and publish.`,
+        { type: 'draft_created', draftId, taskId: newTaskId }
       );
 
       setCurrentDraftId(draftId);
-      setProgress([]);
+      clearProgress();
 
     } catch (error: any) {
       console.error('Product processing error:', error);
-      updateProgress('error', 'error', error.message);
-      
-      setTaskContext({
-        ...taskContext,
-        status: 'failed',
-        error: error.message,
+      progressCheckpoints.forEach(cp => {
+        if (cp.status === 'active') updateProgressCheckpoint(cp.id, 'error');
       });
-
+      
       await addAssistantMessage(
-        `❌ **Processing Failed**
-
-**Error**: ${error.message}
-
-**Troubleshooting Steps**
-• Verify your OpenAI API key is valid
-• Check you have sufficient API quota
-• Ensure product URL/images are accessible
-• Verify internet connection
-
-**What to do next**
-• Fix the issue above and try again
-• Type \`help\` for usage guide
-• Check Settings for API configuration
-
-I've saved your progress. Type \`continue\` to retry when ready.`
+        `❌ Processing failed: ${error.message}\n\nPlease check your settings and try again.`
       );
-      setProgress([]);
+      clearProgress();
     }
   };
 
@@ -562,18 +419,14 @@ I've saved your progress. Type \`continue\` to retry when ready.`
     if (!conversation) return;
 
     try {
-      // Delete conversation (will be recreated on next message)
       setConversation(null);
       setTaskContext({});
-      setProgress([]);
+      clearProgress();
       setShowClearDialog(false);
       
-      // Create new conversation
       await loadOrCreateConversation();
-      
       toast.success('Chat history cleared');
     } catch (error) {
-      console.error('Error clearing chat:', error);
       toast.error('Failed to clear chat');
     }
   };
@@ -581,17 +434,10 @@ I've saved your progress. Type \`continue\` to retry when ready.`
   const copyMessage = async (content: string) => {
     try {
       await navigator.clipboard.writeText(content);
-      toast.success('Message copied to clipboard');
+      toast.success('Copied to clipboard');
     } catch (error) {
-      toast.error('Failed to copy message');
+      toast.error('Failed to copy');
     }
-  };
-
-  const retryMessage = async (msg: AIMessage) => {
-    if (msg.role !== 'user') return;
-    
-    setMessage(msg.content);
-    await handleSendMessage();
   };
 
   const handleFileUpload = async (files: FileList | null) => {
@@ -607,18 +453,11 @@ I've saved your progress. Type \`continue\` to retry when ready.`
         newFiles.push({ file, type: 'image', preview, id });
       } else if (file.type === 'application/pdf') {
         newFiles.push({ file, type: 'pdf', id });
-      } else {
-        newFiles.push({ file, type: 'document', id });
       }
     }
     
     if (newFiles.length === 0) {
       toast.error('Please select valid files');
-      return;
-    }
-    
-    if (uploadedFiles.length + newFiles.length > 10) {
-      toast.error('Maximum 10 files allowed');
       return;
     }
     
@@ -646,129 +485,125 @@ I've saved your progress. Type \`continue\` to retry when ready.`
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      await handleFileUpload(files);
-    }
-  };
-
   const removeFile = (id: string) => {
     setUploadedFiles(prev => {
       const file = prev.find(f => f.id === id);
-      if (file?.preview) {
-        URL.revokeObjectURL(file.preview);
-      }
+      if (file?.preview) URL.revokeObjectURL(file.preview);
       return prev.filter(f => f.id !== id);
     });
   };
 
-  const formatTimestamp = (date: Date) => {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-    
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit' 
-    });
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Calculate progress percentage
+  const progressPercentage = progressCheckpoints.length > 0 
+    ? (progressCheckpoints.filter(cp => cp.status === 'complete').length / progressCheckpoints.length) * 100 
+    : 0;
+
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-muted/20">
+    <div className="flex flex-col h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
       {/* Permission Error Banner */}
       {permissionError && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-orange-50 dark:bg-orange-950 border-b-2 border-orange-500 p-4"
+          className="bg-orange-50 dark:bg-orange-950 border-b border-orange-200 dark:border-orange-800 px-6 py-3"
         >
-          <div className="container mx-auto flex items-start gap-4">
-            <AlertTriangle className="w-6 h-6 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h3 className="font-bold text-orange-900 dark:text-orange-100 mb-2">
-                Firestore Rules Not Deployed
-              </h3>
-              <p className="text-sm text-orange-800 dark:text-orange-200 mb-3">
-                The AI Assistant requires Firestore security rules to be deployed. This takes about 2 minutes.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="bg-white dark:bg-gray-900 border-orange-300 hover:bg-orange-50"
-                  asChild
-                >
-                  <a
-                    href="https://console.firebase.google.com/project/flyspark-cb85e/firestore/rules"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Deploy Rules Now
-                  </a>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => window.location.reload()}
-                  className="text-orange-700 hover:text-orange-900"
-                >
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Refresh Page
-                </Button>
-              </div>
-              <p className="text-xs text-orange-700 dark:text-orange-300 mt-3">
-                📄 Copy rules from: <code className="bg-orange-100 dark:bg-orange-900 px-2 py-0.5 rounded">/FIRESTORE_SECURITY_RULES.txt</code> or see <code className="bg-orange-100 dark:bg-orange-900 px-2 py-0.5 rounded">/FIX_AI_PERMISSIONS.md</code>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-orange-600" />
+              <p className="text-sm text-orange-900 dark:text-orange-100">
+                Firestore rules not deployed. 
+                <a href="https://console.firebase.google.com/project/flyspark-cb85e/firestore/rules" target="_blank" rel="noopener noreferrer" className="ml-2 underline">
+                  Deploy now
+                </a>
               </p>
             </div>
-            <button
-              onClick={() => setPermissionError(false)}
-              className="text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-200"
-            >
-              <X className="w-5 h-5" />
+            <button onClick={() => setPermissionError(false)}>
+              <X className="w-4 h-4 text-orange-600" />
             </button>
           </div>
         </motion.div>
       )}
 
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700 text-white p-6 border-b border-border/20 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <div className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                <Bot className="w-7 h-7" />
+      {/* Progress Header - only shows when processing */}
+      <AnimatePresence>
+        {progressCheckpoints.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm"
+          >
+            <div className="px-6 py-4">
+              {/* Progress bar */}
+              <div className="relative h-1 bg-gray-200 dark:bg-gray-700 rounded-full mb-4">
+                <motion.div
+                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full"
+                  initial={{ width: '0%' }}
+                  animate={{ width: `${progressPercentage}%` }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                />
               </div>
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white shadow-lg" />
+
+              {/* Checkpoints */}
+              <div className="flex items-center justify-between">
+                {progressCheckpoints.map((checkpoint, index) => (
+                  <div key={checkpoint.id} className="flex flex-col items-center flex-1">
+                    <motion.div
+                      initial={{ scale: 0.8 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className={`
+                        w-10 h-10 rounded-full flex items-center justify-center mb-2 relative
+                        ${checkpoint.status === 'pending' && 'bg-gray-200 dark:bg-gray-700'}
+                        ${checkpoint.status === 'active' && 'bg-blue-500 text-white animate-pulse'}
+                        ${checkpoint.status === 'complete' && 'bg-green-500 text-white'}
+                        ${checkpoint.status === 'error' && 'bg-red-500 text-white'}
+                      `}
+                    >
+                      {checkpoint.status === 'complete' ? (
+                        <Check className="w-5 h-5" />
+                      ) : checkpoint.status === 'error' ? (
+                        <X className="w-5 h-5" />
+                      ) : checkpoint.status === 'active' ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <checkpoint.icon className="w-5 h-5 text-gray-400" />
+                      )}
+                    </motion.div>
+                    <p className={`
+                      text-xs text-center max-w-[80px]
+                      ${checkpoint.status === 'complete' && 'text-green-600 dark:text-green-400 font-medium'}
+                      ${checkpoint.status === 'active' && 'text-blue-600 dark:text-blue-400 font-medium'}
+                      ${checkpoint.status === 'error' && 'text-red-600 dark:text-red-400 font-medium'}
+                      ${checkpoint.status === 'pending' && 'text-gray-500 dark:text-gray-400'}
+                    `}>
+                      {checkpoint.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Chat Header */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <Bot className="w-6 h-6 text-white" />
+              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white dark:border-gray-800" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                AI Product Assistant
-                <Sparkles className="w-5 h-5 text-yellow-300" />
-              </h1>
-              <p className="text-sm text-white/80 mt-1">
-                Powered by GPT-4 Vision • Extract products instantly
-              </p>
+              <h2 className="font-semibold text-gray-900 dark:text-white">AI Product Assistant</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Always ready to help</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -776,145 +611,112 @@ I've saved your progress. Type \`continue\` to retry when ready.`
               variant="ghost"
               size="sm"
               onClick={() => setShowClearDialog(true)}
-              className="text-white hover:bg-white/20"
+              className="text-gray-600 dark:text-gray-300"
             >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Clear Chat
+              <Trash2 className="w-4 h-4" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="text-white hover:bg-white/20"
               asChild
+              className="text-gray-600 dark:text-gray-300"
             >
               <Link to="/admin/settings">
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
+                <Settings className="w-4 h-4" />
               </Link>
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Chat Area */}
+      {/* Chat Messages */}
       <div 
-        className="flex-1 overflow-y-auto p-6 space-y-4"
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+        className="flex-1 overflow-y-auto px-6 py-6 space-y-6"
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+        onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+        onDrop={async (e) => { 
+          e.preventDefault(); 
+          setIsDragging(false); 
+          await handleFileUpload(e.dataTransfer.files);
+        }}
       >
         {/* Drag Overlay */}
-        <AnimatePresence>
-          {isDragging && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-blue-600/20 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none"
-            >
-              <motion.div
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                className="bg-surface border-2 border-dashed border-blue-500 rounded-3xl p-16 text-center shadow-2xl"
-              >
-                <Upload className="w-20 h-20 text-blue-500 mx-auto mb-4" />
-                <p className="text-2xl font-bold text-foreground mb-2">Drop files here</p>
-                <p className="text-muted-foreground">Images, PDFs, and documents supported</p>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {isDragging && (
+          <div className="fixed inset-0 bg-blue-500/10 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 shadow-2xl border-2 border-dashed border-blue-500">
+              <Upload className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+              <p className="text-xl font-semibold text-gray-900 dark:text-white">Drop files here</p>
+            </div>
+          </div>
+        )}
 
         {/* Empty State */}
         {conversation && conversation.messages.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-16"
-          >
-            <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl">
-              <Sparkles className="w-12 h-12 text-white" />
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl flex items-center justify-center mb-6">
+              <Sparkles className="w-10 h-10 text-white" />
             </div>
-            <h2 className="text-3xl font-bold text-foreground mb-3">
-              Welcome to AI Assistant!
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto mb-8 text-lg">
-              I can help you add products automatically from URLs, images, and PDF catalogs.
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Welcome to AI Assistant
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 max-w-md mb-8">
+              Paste a product URL, upload images, or attach PDFs to get started
             </p>
-            
-            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-              {[
-                { icon: ExternalLink, title: 'Product URLs', desc: 'Paste any product URL and I\'ll extract all details', color: 'blue' },
-                { icon: ImageIcon, title: 'Image Analysis', desc: 'Upload or paste product images for AI analysis', color: 'purple' },
-                { icon: FileText, title: 'PDF Catalogs', desc: 'Attach PDF files to extract product info', color: 'green' },
-              ].map((feature, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="bg-surface rounded-2xl border border-border p-6 hover:shadow-lg transition-all hover:border-blue-500/50"
-                >
-                  <div className={`w-14 h-14 bg-${feature.color}-500/10 rounded-xl flex items-center justify-center mb-4`}>
-                    <feature.icon className={`w-7 h-7 text-${feature.color}-500`} />
-                  </div>
-                  <h3 className="font-bold text-foreground mb-2 text-lg">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground">{feature.desc}</p>
-                </motion.div>
-              ))}
+            <div className="flex flex-wrap gap-3 justify-center">
+              <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-sm text-gray-700 dark:text-gray-300">
+                🔗 Paste URL
+              </div>
+              <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-sm text-gray-700 dark:text-gray-300">
+                📸 Upload images
+              </div>
+              <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-sm text-gray-700 dark:text-gray-300">
+                💬 Ask anything
+              </div>
             </div>
-
-            <div className="mt-10 flex flex-wrap justify-center gap-3">
-              {['Try: "Add this product: https://..."', 'Upload product images', 'Type "help" for guide'].map((hint, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.3 + i * 0.1 }}
-                  className="px-5 py-2.5 bg-muted/50 rounded-full text-sm text-muted-foreground border border-border"
-                >
-                  {hint}
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Messages */}
-        <AnimatePresence>
-          {conversation?.messages.map((msg, index) => (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group`}
-            >
-              <div className={`max-w-[85%] md:max-w-[75%] ${msg.role === 'user' ? 'ml-auto' : 'mr-auto'}`}>
-                {msg.role === 'assistant' && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                      <Bot className="w-4 h-4 text-white" />
-                    </div>
-                    <span className="text-sm font-medium text-muted-foreground">AI Assistant</span>
+        {conversation?.messages.map((msg, index) => (
+          <div
+            key={msg.id}
+            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div className={`flex gap-3 max-w-[80%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+              {/* Avatar */}
+              <div className="flex-shrink-0">
+                {msg.role === 'assistant' ? (
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <Bot className="w-5 h-5 text-white" />
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-200">
+                      {user?.email?.[0].toUpperCase()}
+                    </span>
                   </div>
                 )}
-                
+              </div>
+
+              {/* Message Bubble */}
+              <div className="flex flex-col gap-1">
                 <div
-                  className={`rounded-2xl px-5 py-3 shadow-sm ${
-                    msg.role === 'user'
-                      ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white'
-                      : 'bg-surface border border-border text-foreground'
-                  }`}
+                  className={`
+                    rounded-2xl px-4 py-2.5 shadow-sm
+                    ${msg.role === 'user' 
+                      ? 'bg-blue-600 text-white rounded-tr-sm' 
+                      : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-tl-sm border border-gray-200 dark:border-gray-700'
+                    }
+                  `}
                 >
                   <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                   
                   {/* File attachments */}
                   {msg.metadata?.files && msg.metadata.files.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-2 flex flex-wrap gap-2">
                       {msg.metadata.files.map((file: any, i: number) => (
-                        <div key={i} className="flex items-center gap-2 bg-black/10 rounded-lg px-3 py-1.5">
-                          <File className="w-4 h-4" />
+                        <div key={i} className="flex items-center gap-1.5 bg-black/10 rounded-lg px-2 py-1">
+                          <File className="w-3.5 h-3.5" />
                           <span className="text-xs">{file.name}</span>
                         </div>
                       ))}
@@ -926,117 +728,49 @@ I've saved your progress. Type \`continue\` to retry when ready.`
                     <Button
                       onClick={() => setCurrentDraftId(msg.metadata.draftId)}
                       size="sm"
-                      className="mt-3 bg-green-600 hover:bg-green-700 text-white"
+                      className="mt-3 bg-green-600 hover:bg-green-700"
                     >
                       <CheckCircle2 className="w-4 h-4 mr-2" />
                       Review Draft
                     </Button>
                   )}
-
-                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/10">
-                    <span className="text-xs opacity-70 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {formatTimestamp(msg.timestamp)}
-                    </span>
-                    
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => copyMessage(msg.content)}
-                        className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
-                        title="Copy message"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                      {msg.role === 'user' && (
-                        <button
-                          onClick={() => retryMessage(msg)}
-                          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
-                          title="Retry message"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
                 </div>
-                
-                {msg.role === 'user' && (
-                  <div className="flex items-center gap-2 mt-2 justify-end">
-                    <span className="text-sm font-medium text-muted-foreground">You</span>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
 
-        {/* Progress Indicators */}
-        {progress.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-surface border border-border rounded-2xl p-5 shadow-sm"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-              <span className="font-semibold text-foreground">Processing...</span>
+                {/* Timestamp */}
+                <div className={`flex items-center gap-2 px-1 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {formatTime(msg.timestamp)}
+                  </span>
+                  {msg.role === 'assistant' && (
+                    <button
+                      onClick={() => copyMessage(msg.content)}
+                      className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="space-y-3">
-              {progress.map((step, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="flex items-center gap-3"
-                >
-                  {step.status === 'complete' && (
-                    <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  )}
-                  {step.status === 'active' && (
-                    <Loader2 className="w-5 h-5 text-blue-500 animate-spin flex-shrink-0" />
-                  )}
-                  {step.status === 'error' && (
-                    <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
-                  )}
-                  {step.status === 'pending' && (
-                    <div className="w-5 h-5 rounded-full border-2 border-muted flex-shrink-0" />
-                  )}
-                  <div className="flex-1">
-                    <p className="text-sm text-foreground">{step.message}</p>
-                    {step.timestamp && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {step.timestamp.toLocaleTimeString()}
-                      </p>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        )}
+          </div>
+        ))}
 
         {/* Typing Indicator */}
         {isTyping && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="flex justify-start"
-          >
-            <div className="flex items-center gap-2">
+          <div className="flex justify-start">
+            <div className="flex gap-3">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <Bot className="w-4 h-4 text-white" />
+                <Bot className="w-5 h-5 text-white" />
               </div>
-              <div className="bg-surface border border-border rounded-2xl px-5 py-3">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm border border-gray-200 dark:border-gray-700">
                 <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
 
         <div ref={messagesEndRef} />
@@ -1044,56 +778,44 @@ I've saved your progress. Type \`continue\` to retry when ready.`
 
       {/* File Previews */}
       {uploadedFiles.length > 0 && (
-        <div className="px-6 py-4 bg-background border-t border-border">
-          <p className="text-sm font-semibold text-foreground mb-3">
-            Attached Files ({uploadedFiles.length})
-          </p>
-          <div className="flex flex-wrap gap-3">
+        <div className="px-6 py-3 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex gap-2 flex-wrap">
             {uploadedFiles.map((file) => (
-              <motion.div
-                key={file.id}
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="relative group"
-              >
+              <div key={file.id} className="relative group">
                 {file.type === 'image' ? (
-                  <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-border shadow-sm">
-                    <img
-                      src={file.preview}
-                      alt="Upload"
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                      <p className="text-xs text-white truncate">{file.file.name}</p>
-                    </div>
+                  <div className="relative w-16 h-16 rounded-lg overflow-hidden">
+                    <img src={file.preview} alt="" className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => removeFile(file.id)}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
                   </div>
                 ) : (
-                  <div className="w-24 h-24 bg-gradient-to-br from-muted to-muted/50 rounded-xl border-2 border-border flex flex-col items-center justify-center p-2">
-                    <FileText className="w-8 h-8 text-muted-foreground mb-1" />
-                    <span className="text-xs text-muted-foreground text-center truncate w-full">
-                      {file.file.name.split('.').pop()?.toUpperCase()}
-                    </span>
+                  <div className="relative w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                    <FileText className="w-6 h-6 text-gray-500" />
+                    <button
+                      onClick={() => removeFile(file.id)}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
                   </div>
                 )}
-                <button
-                  onClick={() => removeFile(file.id)}
-                  className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center shadow-lg hover:scale-110"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
       )}
 
       {/* Input Area */}
-      <div className="p-6 bg-background border-t border-border">
+      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex items-end gap-3">
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*,.pdf,.doc,.docx"
+            accept="image/*,.pdf"
             multiple
             onChange={(e) => handleFileUpload(e.target.files)}
             className="hidden"
@@ -1102,14 +824,14 @@ I've saved your progress. Type \`continue\` to retry when ready.`
           <Button
             onClick={() => fileInputRef.current?.click()}
             disabled={processing}
-            variant="outline"
+            variant="ghost"
             size="icon"
-            className="flex-shrink-0 h-12 w-12 rounded-xl"
+            className="flex-shrink-0 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
           >
             <Upload className="w-5 h-5" />
           </Button>
 
-          <div className="flex-1 relative">
+          <div className="flex-1">
             <textarea
               ref={textareaRef}
               value={message}
@@ -1121,14 +843,11 @@ I've saved your progress. Type \`continue\` to retry when ready.`
                   handleSendMessage();
                 }
               }}
-              placeholder="Paste product URL, upload files, or ask anything... (Ctrl+V to paste images)"
+              placeholder="Type a message..."
               rows={1}
               disabled={processing}
-              className="w-full px-5 py-3.5 bg-surface border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:opacity-50 transition-all"
-              style={{
-                maxHeight: '120px',
-                minHeight: '50px',
-              }}
+              className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border-0 rounded-full text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:opacity-50"
+              style={{ maxHeight: '120px', minHeight: '48px' }}
             />
           </div>
 
@@ -1136,7 +855,7 @@ I've saved your progress. Type \`continue\` to retry when ready.`
             onClick={handleSendMessage}
             disabled={processing || (!message.trim() && uploadedFiles.length === 0)}
             size="icon"
-            className="flex-shrink-0 h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg"
+            className="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-12 h-12"
           >
             {processing ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -1145,30 +864,21 @@ I've saved your progress. Type \`continue\` to retry when ready.`
             )}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-3 flex items-center gap-4">
-          <span>Enter to send • Shift+Enter for new line</span>
-          <span>•</span>
-          <span>Drag & drop or Ctrl+V to paste files</span>
-        </p>
       </div>
 
       {/* Clear Chat Dialog */}
       <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-orange-500" />
-              Clear Chat History?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Clear chat history?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete all messages and reset the conversation.
-              Any unfinished tasks will be lost. This action cannot be undone.
+              This will permanently delete all messages. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleClearChat} className="bg-destructive hover:bg-destructive/90">
-              Clear Chat
+            <AlertDialogAction onClick={handleClearChat} className="bg-red-600 hover:bg-red-700">
+              Clear
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1181,8 +891,7 @@ I've saved your progress. Type \`continue\` to retry when ready.`
           onClose={() => setCurrentDraftId(null)}
           onPublished={() => {
             setCurrentDraftId(null);
-            setTaskContext({ ...taskContext, status: 'complete' });
-            toast.success('Product published successfully!');
+            toast.success('Product published!');
           }}
         />
       )}

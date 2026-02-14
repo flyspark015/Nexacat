@@ -291,26 +291,39 @@ export async function getAIConversation(conversationId: string): Promise<AIConve
 
 export async function getAdminConversation(adminId: string): Promise<AIConversation | null> {
   try {
+    // Query without orderBy to avoid needing composite index
+    // Sort client-side since each admin typically has only 1-2 conversations
     const q = query(
       collection(db, 'aiConversations'),
-      where('adminId', '==', adminId),
-      orderBy('updatedAt', 'desc')
+      where('adminId', '==', adminId)
     );
     
     const snapshot = await getDocs(q);
     if (snapshot.empty) return null;
     
-    const data = snapshot.docs[0].data();
-    return {
-      id: snapshot.docs[0].id,
-      ...data,
-      messages: data.messages?.map((msg: any) => ({
-        ...msg,
-        timestamp: msg.timestamp?.toDate(),
-      })),
-      createdAt: data.createdAt?.toDate(),
-      updatedAt: data.updatedAt?.toDate(),
-    } as AIConversation;
+    // Sort by updatedAt descending client-side
+    const conversations = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        messages: data.messages?.map((msg: any) => ({
+          ...msg,
+          timestamp: msg.timestamp?.toDate(),
+        })),
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate(),
+      } as AIConversation;
+    });
+    
+    // Sort by updatedAt in memory (most recent first)
+    conversations.sort((a, b) => {
+      const aTime = a.updatedAt?.getTime() || 0;
+      const bTime = b.updatedAt?.getTime() || 0;
+      return bTime - aTime;
+    });
+    
+    return conversations[0];
   } catch (error) {
     console.error('Error getting admin conversation:', error);
     throw error;
