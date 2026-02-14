@@ -46,6 +46,9 @@ export const getCategories = async (): Promise<Category[]> => {
   })) as Category[];
 };
 
+// Alias for consistency
+export const getAllCategories = getCategories;
+
 export const getCategory = async (id: string): Promise<Category | null> => {
   const docSnap = await getDoc(doc(db, "categories", id));
   if (docSnap.exists()) {

@@ -4,6 +4,8 @@ import { uploadLogo, uploadFavicon, uploadPaymentQR } from "../../lib/storageSer
 import { SystemSettings } from "../../lib/types";
 import { Settings, Save, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { AISettingsPanel } from "../../components/admin/AISettingsPanel";
+import { PermissionChecker } from "../../components/admin/PermissionChecker";
 
 export function AdminSettings() {
   const [settings, setSettings] = useState<SystemSettings>({
@@ -145,9 +147,14 @@ export function AdminSettings() {
 
             <div className="mt-6 pt-6 border-t border-destructive/20">
               <p className="text-sm text-muted-foreground">
-                📚 For detailed instructions, see <code className="bg-muted px-2 py-1 rounded text-foreground">/FIREBASE_RULES_DEPLOYMENT.md</code>
+                📚 For detailed instructions, see <code className="bg-muted px-2 py-1 rounded text-foreground">/DEPLOY_RULES_NOW.md</code>
               </p>
             </div>
+          </div>
+
+          {/* Permission Checker Tool */}
+          <div className="mt-6">
+            <PermissionChecker />
           </div>
 
           {/* Temporary Settings (View Only) */}
@@ -597,6 +604,9 @@ export function AdminSettings() {
               </p>
             </div>
           </div>
+
+          {/* AI Settings Panel */}
+          <AISettingsPanel />
 
           {/* Success/Error Message */}
           {message && (

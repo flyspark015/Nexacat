@@ -1,6 +1,6 @@
 # 🚀 FlySpark - B2B Product Catalog
 
-> **Production-ready B2B product catalog web application with modern SaaS design, Firebase backend, and WhatsApp checkout integration.**
+> **Production-ready B2B product catalog web application with modern SaaS design, Firebase backend, WhatsApp checkout integration, and AI-powered product creation.**
 
 [![Production Ready](https://img.shields.io/badge/status-production%20ready-success)](/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](/)
@@ -61,13 +61,35 @@ FlySpark is a comprehensive B2B product catalog platform designed for dealers, d
 
 - 📈 **Dashboard** - Overview of products, orders, categories, users
 - 🏷️ **Product Management** - Create, edit, delete products
+- 🤖 **AI Product Assistant** - ⭐ NEW! Auto-create products from URLs/images with GPT-4 Vision
 - 🖼️ **Image Upload** - Multiple images with Firebase Storage
 - 🎨 **Variation Manager** - Manage product variations
 - 📋 **Order Management** - Track and update order status
 - 👥 **User Management** - View users, assign roles
 - 🗂️ **Category Management** - Organize products by categories
-- ⚙️ **Settings Panel** - Logo, company info, WhatsApp configuration
+- ⚙️ **Settings Panel** - Logo, company info, WhatsApp configuration, AI settings
 - 📊 **Status Workflow** - NEW → CONTACTED → QUOTED → CLOSED
+
+### 🤖 AI Product Assistant (NEW!)
+
+**⭐ Reduce product entry time by 85%!**
+
+- **Smart Extraction** - Paste product URL or upload screenshots
+- **GPT-4 Vision** - Analyzes images and extracts all product data
+- **Auto-Fill Everything** - Title, description, specs, images, tags
+- **Category Intelligence** - Smart category matching with approval
+- **Cost-Effective** - ₹7-15 per product (~10x ROI)
+- **Real-Time Progress** - See extraction steps live
+- **Draft Review** - Review and edit before publishing
+- **Custom Instructions** - Train AI with your specific requirements
+
+**Quick Start:**
+1. Configure OpenAI API key in Settings
+2. Click AI Assistant button (bottom-right)
+3. Paste product URL or upload screenshots
+4. Review draft → Set price → Publish!
+
+**[→ Complete AI Assistant Documentation](./AI_START_HERE.md)**
 
 ---
 

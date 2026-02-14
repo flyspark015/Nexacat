@@ -24,6 +24,7 @@ import { AdminSettings } from "./pages/admin/AdminSettings";
 import { AdminFAQs } from "./pages/admin/AdminFAQs";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { AllProductsPage } from "./pages/AllProductsPage";
+import { AdminAI } from "./pages/admin/AdminAI";
 
 export const router = createBrowserRouter([
   {
@@ -174,6 +175,16 @@ export const router = createBrowserRouter([
       <ProtectedRoute requireAdmin>
         <AdminLayout>
           <AdminFAQs />
+        </AdminLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/admin/ai",
+    element: (
+      <ProtectedRoute requireAdmin>
+        <AdminLayout>
+          <AdminAI />
         </AdminLayout>
       </ProtectedRoute>
     ),

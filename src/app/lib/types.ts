@@ -126,6 +126,146 @@ export interface Contact {
   totalQuestions: number;
 }
 
+// AI Assistant System Types
+export interface AITask {
+  id: string;
+  adminId: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  stage: 'analyzing_input' | 'extracting_data' | 'processing_images' | 
+         'generating_content' | 'suggesting_category' | 'creating_draft' | 'completed';
+  progress: number; // 0-100
+  input: {
+    url?: string;
+    screenshots?: string[]; // Storage URLs
+    additionalText?: string;
+    referenceCategory?: string;
+  };
+  output?: {
+    draftId: string;
+    warnings?: string[];
+  };
+  error?: {
+    message: string;
+    code: string;
+    stage: string;
+  };
+  metadata: {
+    model: string;
+    tokensUsed: number;
+    cost: number; // USD
+    duration: number; // seconds
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ProductDraft {
+  id: string;
+  adminId: string;
+  taskId: string;
+  status: 'review_required' | 'approved' | 'published' | 'discarded';
+  product: {
+    name: string;
+    description: string; // Rich HTML
+    shortDescription: string[];
+    images: string[]; // Storage URLs
+    specs: Record<string, string>;
+    tags: string[];
+    price?: number; // Always null initially
+    currency: 'INR';
+    stockStatus: 'in-stock' | 'out-of-stock' | 'preorder';
+    productType: 'simple' | 'variable';
+    videoUrl?: string;
+  };
+  suggestedCategory: {
+    path: string; // "Electronics > Smartphones"
+    categoryId?: string; // If exists
+    confidence: number; // 0-1
+    shouldCreate: boolean;
+    newCategoryDetails?: {
+      name: string;
+      parentPath?: string;
+      description: string;
+      suggestedImage: string;
+    };
+  };
+  aiMetadata: {
+    sourceUrl?: string;
+    model: string;
+    extractionMethod: 'vision' | 'manual';
+    qualityScore: number; // 0-100
+    warnings: string[];
+  };
+  adminChanges?: {
+    field: string;
+    originalValue: any;
+    newValue: any;
+    timestamp: Date;
+  }[];
+  createdAt: Date;
+  publishedAt?: Date;
+}
+
+export interface AIConversation {
+  id: string;
+  adminId: string;
+  messages: {
+    id: string;
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    timestamp: Date;
+    metadata?: {
+      taskId?: string;
+      draftId?: string;
+      type?: 'text' | 'image' | 'progress' | 'category_approval';
+    };
+  }[];
+  context: {
+    mode: 'add_product' | 'bulk_import' | 'update_product' | 'idle';
+    activeTaskId?: string;
+    activeDraftId?: string;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AIUsage {
+  id: string; // adminId-YYYY-MM
+  adminId: string;
+  month: string; // "2025-02"
+  totalRequests: number;
+  totalTokens: number;
+  totalCost: number; // USD
+  requestsToday: number;
+  costToday: number;
+  byModel: Record<string, {
+    requests: number;
+    tokens: number;
+    cost: number;
+  }>;
+  dailyBreakdown: Record<string, { // "2025-02-13"
+    requests: number;
+    cost: number;
+  }>;
+  updatedAt: Date;
+}
+
+export interface AISettings {
+  id: string; // adminId
+  openaiApiKey: string; // Encrypted
+  model: 'gpt-4-turbo' | 'gpt-4-vision-preview' | 'gpt-4';
+  maxTokensPerRequest: number;
+  monthlyBudgetINR: number;
+  enableCostNotifications: boolean;
+  automationLevel: 'manual' | 'semi-auto' | 'auto-publish';
+  autoSuggestCategories: boolean;
+  allowCreateCategories: boolean;
+  categoryConfidenceThreshold: number; // 0-1
+  customInstructions: string[]; // Array of instruction blocks
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Cart types (local storage + Zustand)
 export interface CartItem {
   productId: string;

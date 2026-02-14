@@ -14,6 +14,7 @@ import {
   Zap,
   Settings,
   MessageSquare,
+  Bot,
 } from "lucide-react";
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -33,6 +34,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { path: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+    { path: "/admin/ai", label: "AI", icon: Bot, badge: "New" },
     { path: "/admin/products", label: "Products", icon: Package },
     { path: "/admin/categories", label: "Categories", icon: FolderTree },
     { path: "/admin/orders", label: "Orders", icon: ShoppingCart },
@@ -82,6 +84,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               >
                 <Icon className="w-5 h-5" />
                 <span className="font-medium">{item.label}</span>
+                {item.badge && (
+                  <span className="ml-auto px-2 py-0.5 bg-green-500 text-white text-xs font-semibold rounded-full">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -128,7 +135,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto md:mt-0 mt-16">{children}</main>
+      <main className="flex-1 overflow-auto md:mt-0 mt-16">
+        {children}
+      </main>
     </div>
   );
 }
