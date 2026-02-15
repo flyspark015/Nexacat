@@ -56,7 +56,7 @@ export async function saveAISettings(adminId: string, settings: Partial<AISettin
     } else {
       await setDoc(docRef, {
         id: adminId,
-        model: 'gpt-4-vision-preview',
+        model: 'gpt-4o',
         maxTokensPerRequest: 4000,
         monthlyBudgetINR: 5000,
         enableCostNotifications: true,
@@ -384,6 +384,19 @@ export async function updateConversationContext(
   }
 }
 
+export async function clearConversationMessages(conversationId: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'aiConversations', conversationId);
+    await updateDoc(docRef, {
+      messages: [],
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error('Error clearing conversation messages:', error);
+    throw error;
+  }
+}
+
 // ==================== AI USAGE TRACKING ====================
 
 export async function getAIUsage(adminId: string, month: string): Promise<AIUsage | null> {
@@ -480,6 +493,70 @@ export async function updateAIUsage(
     }
   } catch (error) {
     console.error('Error updating AI usage:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get aggregated AI usage statistics for admin
+ */
+export async function getAIUsageStats(adminId: string): Promise<{
+  thisMonth: AIUsage | null;
+  totalCost: number;
+  totalRequests: number;
+  averageCostPerRequest: number;
+  costToday: number;
+  requestsToday: number;
+  topModel: string | null;
+}> {
+  try {
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    
+    const thisMonth = await getAIUsage(adminId, month);
+    
+    if (!thisMonth) {
+      return {
+        thisMonth: null,
+        totalCost: 0,
+        totalRequests: 0,
+        averageCostPerRequest: 0,
+        costToday: 0,
+        requestsToday: 0,
+        topModel: null,
+      };
+    }
+    
+    const totalCost = thisMonth.totalCost || 0;
+    const totalRequests = thisMonth.totalRequests || 0;
+    const averageCostPerRequest = totalRequests > 0 ? totalCost / totalRequests : 0;
+    const costToday = thisMonth.costToday || 0;
+    const requestsToday = thisMonth.requestsToday || 0;
+    
+    // Find top model by requests
+    let topModel: string | null = null;
+    let maxRequests = 0;
+    
+    if (thisMonth.byModel) {
+      Object.entries(thisMonth.byModel).forEach(([model, stats]) => {
+        if (stats.requests > maxRequests) {
+          maxRequests = stats.requests;
+          topModel = model;
+        }
+      });
+    }
+    
+    return {
+      thisMonth,
+      totalCost,
+      totalRequests,
+      averageCostPerRequest,
+      costToday,
+      requestsToday,
+      topModel,
+    };
+  } catch (error) {
+    console.error('Error getting AI usage stats:', error);
     throw error;
   }
 }

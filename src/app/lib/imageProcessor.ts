@@ -216,24 +216,53 @@ function getImageDimensions(blob: Blob): Promise<{ width: number; height: number
 
 /**
  * Convert File to base64 data URL for AI vision
+ * Uses high quality for best extraction results
  */
-export async function fileToDataUrl(file: File): Promise<string> {
+export async function fileToDataUrl(file: File, maxWidth = 2048, maxHeight = 2048): Promise<string> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
+    const img = new Image();
+    const url = URL.createObjectURL(file);
     
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('Failed to convert file to data URL'));
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      
+      let width = img.width;
+      let height = img.height;
+      
+      // Resize only if extremely large (keep quality high)
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.floor(width * ratio);
+        height = Math.floor(height * ratio);
       }
+      
+      // Create canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+      
+      // Draw with high quality
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      // Convert to data URL with high quality (0.95 for best results)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      resolve(dataUrl);
     };
     
-    reader.onerror = () => {
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
       reject(new Error('Failed to read file'));
     };
     
-    reader.readAsDataURL(file);
+    img.src = url;
   });
 }
 

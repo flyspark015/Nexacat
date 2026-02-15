@@ -253,17 +253,9 @@ export interface AIUsage {
 export interface AISettings {
   id: string; // adminId
   openaiApiKey: string; // Encrypted
-  model: 'gpt-4-turbo' | 'gpt-4-vision-preview' | 'gpt-4';
+  model: 'gpt-4o' | 'gpt-4o-mini' | 'gpt-4-turbo';
   maxTokensPerRequest: number;
   monthlyBudgetINR: number;
-  enableCostNotifications: boolean;
-  automationLevel: 'manual' | 'semi-auto' | 'auto-publish';
-  autoSuggestCategories: boolean;
-  allowCreateCategories: boolean;
-  categoryConfidenceThreshold: number; // 0-1
-  customInstructions: string[]; // Array of instruction blocks
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 // Cart types (local storage + Zustand)

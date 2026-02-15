@@ -206,10 +206,10 @@ export function AIAssistantComplete() {
 
       const extracted = await openai.extractProductData({
         url: productUrl,
-        imageUrls: imageDataUrls,
+        imageUrls: images.map(img => img.dataUrl),
         additionalText,
         customInstructions: aiSettings.customInstructions || [],
-        model: aiSettings.model || 'gpt-4-vision-preview',
+        model: aiSettings.model || 'gpt-4o',
         maxTokens: aiSettings.maxTokensPerRequest || 4000,
       });
 
@@ -276,7 +276,7 @@ export function AIAssistantComplete() {
         },
         aiMetadata: {
           sourceUrl: productUrl,
-          model: aiSettings.model || 'gpt-4-vision-preview',
+          model: aiSettings.model || 'gpt-4o',
           extractionMethod: images.length > 0 ? 'vision' : 'manual',
           qualityScore: Math.max(70, Math.min(95, Math.round((1 - extracted.warnings.length * 0.1) * 100))),
           warnings: extracted.warnings,
@@ -288,7 +288,7 @@ export function AIAssistantComplete() {
       // Step 6: Update usage stats
       await updateAIUsage(
         user!.uid,
-        aiSettings.model || 'gpt-4-vision-preview',
+        aiSettings.model || 'gpt-4o',
         extracted.tokensUsed,
         extracted.cost
       );

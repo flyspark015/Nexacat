@@ -33,7 +33,7 @@ export function CategoryApprovalDialog({ suggestion, onApprove, onCancel }: Cate
   const [searchQuery, setSearchQuery] = useState('');
   
   // New category fields
-  const [newCategoryName, setNewCategoryName] = useState(suggestion.suggestedName);
+  const [newCategoryName, setNewCategoryName] = useState(suggestion.suggestedName || '');
   const [newCategoryImage, setNewCategoryImage] = useState<File | null>(null);
 
   useEffect(() => {

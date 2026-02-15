@@ -24,7 +24,7 @@ import { AdminSettings } from "./pages/admin/AdminSettings";
 import { AdminFAQs } from "./pages/admin/AdminFAQs";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { AllProductsPage } from "./pages/AllProductsPage";
-import { AdminAI } from "./pages/admin/AdminAI";
+import { AIAssistantPage } from "./pages/AIAssistantPageNew";
 
 export const router = createBrowserRouter([
   {
@@ -184,7 +184,7 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute requireAdmin>
         <AdminLayout>
-          <AdminAI />
+          <AIAssistantPage />
         </AdminLayout>
       </ProtectedRoute>
     ),

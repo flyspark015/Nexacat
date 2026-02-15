@@ -1,37 +1,52 @@
 import { useState, useEffect } from 'react';
-import { Bot, Plus, X, Info, DollarSign, Zap } from 'lucide-react';
-import { getAISettings, saveAISettings, getAIUsage } from '../../lib/aiService';
-import { AISettings, AIUsage } from '../../lib/types';
-import { toast } from 'sonner';
+import { Save, AlertCircle, CheckCircle2, Loader2, Key, DollarSign, Zap, RefreshCw, Plus, X, Info, Bot, Sparkles } from 'lucide-react';
 import { useAuthStore } from '../../lib/authStore';
+import { getAISettings, saveAISettings, getAIUsageStats } from '../../lib/aiService';
+import { AISettings } from '../../lib/types';
+import { toast } from 'sonner';
+import { OpenAIClient } from '../../lib/openaiClient';
 
-interface AISettingsPanelProps {
-  onSave?: () => void;
-}
+const DEFAULT_CUSTOM_INSTRUCTIONS = [
+  "Always return structured output: title, short_description, tags, specifications, images_to_download.",
+  "Short description must be 3–6 bullet points, customer-friendly.",
+  "Extract only high-quality product images; ignore thumbnails/icons.",
+  "Never publish automatically — always create a draft and ask admin to confirm.",
+  "If category is missing, propose 1 best category + 2 alternatives, then ask approval.",
+  "Keep pricing blank and explicitly ask admin to confirm price.",
+  "Prefer consistent units: Hz, mm, g, V, A, W; avoid mixed units.",
+  "If info is missing, ask the smallest possible questions to complete the draft.",
+];
 
-export function AISettingsPanel({ onSave }: AISettingsPanelProps) {
+type ModelTab = 'recommended' | 'all';
+
+export function AISettingsPanel() {
   const { user } = useAuthStore();
   const [settings, setSettings] = useState<Partial<AISettings>>({
-    model: 'gpt-4-vision-preview',
-    maxTokensPerRequest: 4000,
-    monthlyBudgetINR: 5000,
-    enableCostNotifications: true,
-    automationLevel: 'semi-auto',
-    autoSuggestCategories: true,
-    allowCreateCategories: true,
+    model: 'gpt-5.2', // Default to strongest model for best quality
+    maxTokensPerRequest: 8000, // Increased for better output
+    monthlyBudgetINR: 50000, // Higher budget for quality-first approach
     categoryConfidenceThreshold: 0.7,
-    customInstructions: [],
+    customInstructions: [...DEFAULT_CUSTOM_INSTRUCTIONS],
   });
-  const [usage, setUsage] = useState<AIUsage | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [availableModels, setAvailableModels] = useState<{
+    id: string;
+    name: string;
+    vision: boolean;
+    deprecated: boolean;
+  }[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [apiKeyValid, setApiKeyValid] = useState<boolean | null>(null);
+  const [usageStats, setUsageStats] = useState<any>(null);
   const [newInstruction, setNewInstruction] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
+  const [modelTab, setModelTab] = useState<ModelTab>('recommended');
 
   useEffect(() => {
     if (user) {
       loadSettings();
-      loadUsage();
+      loadUsageStats();
+      loadAvailableModels();
     }
   }, [user]);
 
@@ -41,25 +56,71 @@ export function AISettingsPanel({ onSave }: AISettingsPanelProps) {
     try {
       const data = await getAISettings(user.uid);
       if (data) {
+        // Migrate deprecated model to gpt-4o
+        if (data.model && (
+          data.model.includes('vision-preview') || 
+          data.model.includes('0314') || 
+          data.model.includes('0613')
+        )) {
+          data.model = 'gpt-4o';
+          // Auto-save the migration
+          await saveAISettings(user.uid, { model: 'gpt-4o' });
+          toast.info('AI model updated to GPT-4o (deprecated model replaced)');
+        }
         setSettings(data);
       }
     } catch (error) {
       console.error('Error loading AI settings:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const loadUsage = async () => {
+  const loadUsageStats = async () => {
     if (!user) return;
     
     try {
-      const now = new Date();
-      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const data = await getAIUsage(user.uid, month);
-      setUsage(data);
+      const data = await getAIUsageStats(user.uid);
+      setUsageStats(data);
     } catch (error) {
-      console.error('Error loading AI usage:', error);
+      console.error('Error loading AI usage stats:', error);
+    }
+  };
+
+  const loadAvailableModels = async () => {
+    // Don't try to load models if API key is not set
+    if (!settings.openaiApiKey) {
+      // Use fallback models
+      setAvailableModels([
+        { id: 'gpt-4o', name: 'GPT-4o (Recommended)', vision: true, deprecated: false },
+        { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Cost-effective)', vision: true, deprecated: false },
+        { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', vision: true, deprecated: false },
+        { id: 'gpt-4', name: 'GPT-4', vision: false, deprecated: false },
+        { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', vision: false, deprecated: false },
+      ]);
+      return;
+    }
+
+    setLoadingModels(true);
+    try {
+      const client = new OpenAIClient(settings.openaiApiKey);
+      const models = await client.listModels();
+      setAvailableModels(models.map(model => ({
+        id: model.id,
+        name: model.name,
+        vision: model.capabilities.vision,
+        deprecated: model.deprecated,
+      })));
+    } catch (error) {
+      console.error('Error loading available models:', error);
+      // Use fallback models on error
+      setAvailableModels([
+        { id: 'gpt-4o', name: 'GPT-4o (Recommended)', vision: true, deprecated: false },
+        { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Cost-effective)', vision: true, deprecated: false },
+        { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', vision: true, deprecated: false },
+        { id: 'gpt-4', name: 'GPT-4', vision: false, deprecated: false },
+        { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', vision: false, deprecated: false },
+      ]);
+    } finally {
+      setLoadingModels(false);
     }
   };
 
@@ -76,7 +137,6 @@ export function AISettingsPanel({ onSave }: AISettingsPanelProps) {
     try {
       await saveAISettings(user.uid, settings);
       toast.success('AI settings saved successfully!');
-      if (onSave) onSave();
     } catch (error: any) {
       console.error('Error saving AI settings:', error);
       toast.error(error.message || 'Failed to save AI settings');
@@ -105,16 +165,73 @@ export function AISettingsPanel({ onSave }: AISettingsPanelProps) {
     }));
   };
 
-  if (loading) {
+  const testApiKey = async () => {
+    if (!settings.openaiApiKey) {
+      toast.error('OpenAI API key is required');
+      return;
+    }
+    
+    setTesting(true);
+    try {
+      const client = new OpenAIClient(settings.openaiApiKey);
+      const models = await client.listModels();
+      if (models.length > 0) {
+        setApiKeyValid(true);
+        toast.success('API key is valid and working!');
+      } else {
+        setApiKeyValid(false);
+        toast.error('API key is valid but no models found. Check your API key permissions.');
+      }
+    } catch (error) {
+      console.error('Error testing API key:', error);
+      setApiKeyValid(false);
+      toast.error('API key is invalid. Please check and try again.');
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  if (!user) {
     return (
       <div className="bg-surface rounded-lg border border-border p-6">
-        <p className="text-muted-foreground">Loading AI settings...</p>
+        <p className="text-muted-foreground">Please log in to access AI settings.</p>
       </div>
     );
   }
 
   const usdToInr = 83; // Approximate conversion rate
-  const budgetPercentage = usage ? (usage.totalCost * usdToInr / (settings.monthlyBudgetINR || 5000)) * 100 : 0;
+  const budgetPercentage = usageStats ? (usageStats.totalCost * usdToInr / (settings.monthlyBudgetINR || 5000)) * 100 : 0;
+
+  const recommendedModels = [
+    {
+      id: 'gpt-4o',
+      name: 'GPT-4o',
+      label: '⭐ Best Overall',
+      description: 'Proven model with vision support. Best balance of quality, speed, and cost.',
+      cost: 'Medium',
+    },
+    {
+      id: 'gpt-4o-mini',
+      name: 'GPT-4o Mini',
+      label: '💰 Budget Option',
+      description: 'Cost-effective with vision support. Great for high-volume extraction.',
+      cost: 'Low',
+    },
+    {
+      id: 'gpt-4.1',
+      name: 'GPT-4.1',
+      label: '🧠 Smartest',
+      description: 'Most intelligent non-reasoning model. Best for complex product pages.',
+      cost: 'High',
+    },
+    {
+      id: 'gpt-5.2',
+      name: 'GPT-5.2',
+      label: '🚀 Latest',
+      description: 'Newest frontier model with advanced capabilities.',
+      cost: 'Very High',
+    },
+  ];
 
   return (
     <div className="bg-surface rounded-lg border border-border p-6 space-y-6">
@@ -133,7 +250,7 @@ export function AISettingsPanel({ onSave }: AISettingsPanelProps) {
           </label>
           <div className="flex gap-2">
             <input
-              type={showApiKey ? "text" : "password"}
+              type={apiKeyValid === false ? "text" : "password"}
               value={settings.openaiApiKey || ''}
               onChange={(e) => setSettings(prev => ({ ...prev, openaiApiKey: e.target.value }))}
               placeholder="sk-proj-..."
@@ -141,20 +258,17 @@ export function AISettingsPanel({ onSave }: AISettingsPanelProps) {
             />
             <button
               type="button"
-              onClick={() => setShowApiKey(!showApiKey)}
+              onClick={() => setApiKeyValid(false)}
               className="px-4 py-2 bg-surface border border-border rounded-lg text-foreground hover:bg-muted transition-colors"
             >
-              {showApiKey ? 'Hide' : 'Show'}
+              {apiKeyValid === false ? 'Hide' : 'Show'}
             </button>
             <button
               type="button"
-              onClick={async () => {
-                // Test API key by making a simple request
-                toast.info('Testing API key... (feature coming soon)');
-              }}
+              onClick={testApiKey}
               className="px-4 py-2 bg-blue-accent text-blue-accent-foreground rounded-lg hover:bg-blue-accent/90 transition-colors"
             >
-              Test
+              {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Test'}
             </button>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
@@ -171,21 +285,112 @@ export function AISettingsPanel({ onSave }: AISettingsPanelProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-foreground mb-2">
+          <label className="block text-sm font-medium text-foreground mb-3">
             AI Model
           </label>
-          <select
-            value={settings.model || 'gpt-4-vision-preview'}
-            onChange={(e) => setSettings(prev => ({ ...prev, model: e.target.value as any }))}
-            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
-          >
-            <option value="gpt-4-turbo">GPT-4 Turbo (Faster, cheaper)</option>
-            <option value="gpt-4-vision-preview">GPT-4 Vision (Recommended for products)</option>
-            <option value="gpt-4">GPT-4 (Most capable, expensive)</option>
-          </select>
-          <p className="text-xs text-muted-foreground mt-1">
-            GPT-4 Vision can analyze product screenshots and images
-          </p>
+          
+          {/* Model Selection Tabs */}
+          <div className="mb-3 flex gap-2 border-b border-border">
+            <button
+              type="button"
+              onClick={() => setModelTab('recommended')}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                modelTab === 'recommended'
+                  ? 'border-blue-accent text-blue-accent'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Recommended
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setModelTab('all')}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                modelTab === 'all'
+                  ? 'border-blue-accent text-blue-accent'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              All Available ({availableModels.length})
+            </button>
+          </div>
+
+          {/* Model Selector */}
+          {modelTab === 'recommended' ? (
+            <div className="space-y-2">
+              {/* Recommended Models Grid */}
+              <div className="grid gap-3">
+                {recommendedModels.map((model) => (
+                  <label
+                    key={model.id}
+                    className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      settings.model === model.id
+                        ? 'border-blue-accent bg-blue-accent/5'
+                        : 'border-border hover:border-blue-accent/50 hover:bg-muted/50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="model"
+                      value={model.id}
+                      checked={settings.model === model.id}
+                      onChange={(e) => setSettings(prev => ({ ...prev, model: e.target.value as any }))}
+                      className="mt-1 w-4 h-4"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-foreground">{model.name}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-accent/10 text-blue-accent font-medium">
+                          {model.label}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">{model.description}</p>
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className="text-muted-foreground">Cost: <strong className="text-foreground">{model.cost}</strong></span>
+                        <span className="text-green-600 dark:text-green-400">✓ Vision</span>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <div className="bg-blue-accent/5 border border-blue-accent/20 rounded-lg p-3 space-y-1.5">
+                <p className="text-xs text-foreground">
+                  💡 <strong>Recommendation:</strong>
+                </p>
+                <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
+                  <li><strong>GPT-4o</strong>: Best for most product extraction tasks (balanced cost/quality)</li>
+                  <li><strong>GPT-4o Mini</strong>: Great for high-volume or budget-conscious workflows</li>
+                  <li><strong>GPT-4.1</strong>: Use for complex/messy product pages that need smarter parsing</li>
+                  <li><strong>GPT-5.2</strong>: Latest model with cutting-edge capabilities (highest cost)</li>
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <select
+                value={settings.model || 'gpt-4o'}
+                onChange={(e) => setSettings(prev => ({ ...prev, model: e.target.value as any }))}
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-accent"
+              >
+                {availableModels.map(model => (
+                  <option key={model.id} value={model.id} disabled={model.deprecated}>
+                    {model.name} {model.vision ? '(Vision)' : ''} {model.deprecated ? '(Deprecated)' : ''}
+                  </option>
+                ))}
+              </select>
+              {settings.model && availableModels.find(m => m.id === settings.model && !m.vision) && (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-foreground">
+                    <strong>Warning:</strong> Model "{settings.model}" does not support vision. Image-based product extraction will fail. Please select a vision-capable model for best results.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -195,6 +400,10 @@ export function AISettingsPanel({ onSave }: AISettingsPanelProps) {
           <DollarSign className="w-4 h-4" />
           Cost Controls
         </h3>
+        
+        <div className="bg-blue-accent/10 border border-blue-accent/20 rounded-lg p-3 text-xs text-foreground">
+          <strong>💡 Image Optimization:</strong> Images are automatically resized to 800x800px and compressed to reduce token usage. Max 2 images per request.
+        </div>
         
         <div>
           <label className="block text-sm font-medium text-foreground mb-2">
@@ -404,33 +613,33 @@ export function AISettingsPanel({ onSave }: AISettingsPanelProps) {
       </div>
 
       {/* Usage Statistics */}
-      {usage && (
+      {usageStats && (
         <div className="space-y-4 pt-4 border-t border-border">
           <h3 className="text-sm font-semibold text-foreground">Usage Statistics (This Month)</h3>
           
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-background rounded-lg p-4 border border-border">
-              <div className="text-2xl font-bold text-foreground">{usage.totalRequests}</div>
+              <div className="text-2xl font-bold text-foreground">{usageStats.totalRequests || 0}</div>
               <div className="text-xs text-muted-foreground">Products Processed</div>
             </div>
             
             <div className="bg-background rounded-lg p-4 border border-border">
               <div className="text-2xl font-bold text-foreground">
-                ₹{(usage.totalCost * usdToInr).toFixed(2)}
+                ₹{((usageStats.totalCost || 0) * usdToInr).toFixed(2)}
               </div>
               <div className="text-xs text-muted-foreground">Total Cost</div>
             </div>
             
             <div className="bg-background rounded-lg p-4 border border-border">
               <div className="text-2xl font-bold text-foreground">
-                {usage.totalTokens.toLocaleString()}
+                {(usageStats.totalTokens || 0).toLocaleString()}
               </div>
               <div className="text-xs text-muted-foreground">Tokens Used</div>
             </div>
             
             <div className="bg-background rounded-lg p-4 border border-border">
               <div className="text-2xl font-bold text-foreground">
-                ₹{((usage.totalCost * usdToInr) / (usage.totalRequests || 1)).toFixed(2)}
+                ₹{(((usageStats.totalCost || 0) * usdToInr) / (usageStats.totalRequests || 1)).toFixed(2)}
               </div>
               <div className="text-xs text-muted-foreground">Avg Cost/Product</div>
             </div>
